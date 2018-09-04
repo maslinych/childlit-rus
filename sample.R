@@ -39,7 +39,7 @@ df.byauthor <- df.all %>%
     slice(which.min(year)) %>%
     arrange(lastname, title, author, year)
 
-write_csv(df.byaithor, "firstprints-byauthor.csv")
+write_csv(df.byauthor, "firstprints-byauthor.csv")
 
 ## authors to filter out (of irrelevant period or genre)
 skipauthors <- read_lines("filter-authors.csv")
