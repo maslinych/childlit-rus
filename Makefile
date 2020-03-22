@@ -10,7 +10,7 @@ help:
 
 all: convert
 
-csv/%.rec.csv: txt/%.txt
+csv/%.rec.csv: txt/%.txt scripts/split_records.py
 	python3 scripts/split_records.py $< $@
 
 records: $(patsubst txt/%.txt,csv/%.rec.csv,$(txtfiles))
