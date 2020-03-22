@@ -8,8 +8,9 @@ import argparse
 AUTHOR_NAME = r"""
 (?<last>           # Фамилия:
 \p{Lu}\p{Ll}+      # Воронцов
-(-\p{Lu}\p{Ll}+)?  # Воронцов-Вельяминов
-)
+(-\p{Lu}\p{Ll}+|   # Воронцов-Вельяминов
+(?<two>\s+\p{Lu}\p{Ll}+(?=,)))?# Сервантес Сааведра, Мигель 
+)(?(two),)
 (\s+\((?<real>     # расшифровка псевдонима:
 \p{Lu}\p{Ll}+)\))? #  Петров (Бирюк)
 (  # альтернатива — без запятой:
@@ -17,7 +18,7 @@ AUTHOR_NAME = r"""
 \p{Lu}\p{Ll}{0,2}\.[\s-]?\p{Lu}\p{Ll}{0,2}\.      # Дм. Ив.; Г.-Х.
 |\p{Lu}\p{Ll}{0,2}\.                              # А.
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{0,2}\.              # Фенимор Д.
-|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=\.)) # Иоганн-Вольфганг; Шарль де
+|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+))) # Иоганн-Вольфганг; Шарль де
 |  # альтернатива — после запятой:
 ,\s+(?<ini>братья)(?=\.)                          # Гримм, братья
 )(\s+
@@ -152,9 +153,9 @@ numbered items"""
 def format_multi_authors(authors):
     out = []
     single_author = re.compile(AUTHOR_NAME, re.U | re.VERBOSE)
-    if not authors.endswith('.'):
-        authors = authors + '.'
     for author in re.split(r'(?:\s+и\s+|,\s+)', authors):
+        if not author.endswith('.'):
+            author = author + '.'
         try:
             m = single_author.match(author)
             out.append(", ".join([m.group('last'), m.group('ini')]))
