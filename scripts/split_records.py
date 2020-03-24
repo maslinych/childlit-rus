@@ -6,29 +6,38 @@ import csv
 import argparse
 
 AUTHOR_NAME = r"""
+(?!Герой\sСоветского\s+Союза)
 (?<last>           # Фамилия:
 \p{Lu}\p{Ll}+      # Воронцов
 (-\p{Lu}\p{Ll}+|   # Воронцов-Вельяминов
-(?<two>\s+\p{Lu}\p{Ll}+(?=,)))?# Сервантес Сааведра, Мигель 
-)(?(two),)
+\s+\p{Lu}\p{Ll}+(?=,))?# Сервантес Сааведра, Мигель 
+)
 (\s+\((?<real>     # расшифровка псевдонима:
 \p{Lu}\p{Ll}+)\))? #  Петров (Бирюк)
 (  # альтернатива — без запятой:
 \s+(?<ini>                                        # инициалы или имена:
 \p{Lu}\p{Ll}{0,2}\.[\s-]?\p{Lu}\p{Ll}{0,2}\.      # Дм. Ив.; Г.-Х.
 |\p{Lu}\p{Ll}{0,2}\.                              # А.
+|\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{3,}(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.)) # Иван Ильич
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{0,2}\.              # Фенимор Д.
-|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+))) # Иоганн-Вольфганг; Шарль де
+|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.))) # Иоганн-Вольфганг; Шарль де
 |  # альтернатива — после запятой:
-,\s+(?<ini>братья)(?=\.)                          # Гримм, братья
+,\s+(?<ini>братья|\p{Lu}\p{Ll}+)(?=\.)                          # Гримм, братья
 )(\s+
 \((?<real> # расшифровка псевдонима:
 (проф\.\s+)?(\p{Lu}\p{Ll}{0,2}\.\s+){0,2}\p{Lu}\p{Ll}+)\) # (проф. П. П. Петров)
 (?=\.)
-)? 
+|,\s+                                       # титулы:
+((?<real>Герой\s+Советского\s+Союза(?=\.)|   # Чкалов, Герой Советского Союза
+проф\.|[Дд]-р.|инж\.|акад\.|доцент|сост\.),?                            # , проф.; Д-р.
+|\[(?<real>[^]]+)\]                     # [явная маркировка] 
+))?
 """
-
-SINGLE_AUTHORS = r'Джамбул|Майн-Рид|Мольер|Эсхил'
+INI_AUTHOR = r"""
+(?<ini>\p{Lu}\p{Ll}{0,2}\.([\s-]?\p{Lu}\p{Ll}{0,2}\.)?)\s+
+(?<last>\p{Lu}\p{Ll}+(-\p{Lu}\p{Ll}+)?)
+"""
+SINGLE_AUTHORS = r'Джамбул|Майн-Рид|Мольер|Эсхил|Айбек|Обос-Апер'
 
 
 class BibItem(object):
@@ -152,41 +161,70 @@ numbered items"""
 
 def format_multi_authors(authors):
     out = []
-    single_author = re.compile(AUTHOR_NAME, re.U | re.VERBOSE)
-    for author in re.split(r'(?:\s+и\s+|,\s+)', authors):
-        if not author.endswith('.'):
-            author = author + '.'
-        try:
-            m = single_author.match(author)
-            out.append(", ".join([m.group('last'), m.group('ini')]))
-        except AttributeError:
-            raise ValueError("Unrecognized author in an author list: %s" % author)
+    if not authors.endswith('.'):
+        authors = authors + '.'
+    for author in re.finditer(AUTHOR_NAME, authors, re.U | re.VERBOSE):
+        if author.group('real'):
+            out.append("{last}, {ini} [{real}]".format(**author.groupdict()))
+        else:
+            out.append("{last}, {ini}".format(**author.groupdict()))
     return "; ".join(out)
 
 
-def extract_author(num, txt, prev=None):
+def format_other_authors(others):
+    others = others.strip(' ;.,')
+    out = []
+    ini_author = re.compile(INI_AUTHOR, re.U | re.VERBOSE)
+    for author in re.split(r'[,;]\s+', others):
+        try:
+            m = ini_author.match(author)
+            out.append("{last}, {ini}".format(**m.groupdict()))
+        except AttributeError:
+            raise ValueError("Unrecognized author in the others list: %s" % author)
+    return "; ".join(out)
+    
+
+def extract_author(num, txt, prev=None, verbose=False):
     """Process numbered lines, extract author name as a separate column,
 or indicate that it is missing with the NOAUTHOR tag. Inconsistencies
 are marked with ERRAUTHOR tag.
     """
-    one_author = re.compile(AUTHOR_NAME + r"[\W\s]+(?<tail>.*)$", re.U | re.VERBOSE)
+    one_author = re.compile(AUTHOR_NAME + r"([[\W\s]--[,«]]+|\s+@[[\W\s]--[«]]+)(?<tail>.*)$", re.U | re.VERBOSE | re.V1)
     dash = re.compile(r"^[\W\s]*[—][\W\s]*(?<tail>.*)$", re.U)
     multi_author = re.compile(r'(?<all>' + AUTHOR_NAME +
                               r'((\s+и\s+|,\s+)' + AUTHOR_NAME + r')+' +
                               r')[\W\s]+(?<tail>.*)$', re.U | re.VERBOSE)
     single_name_authors = re.compile(r"(?<last>" + SINGLE_AUTHORS +
                                      r")[\W\s]+(?<tail>.*)$", re.U)
+    and_others = re.compile(AUTHOR_NAME +
+                            r"\s+и\s+др\.\s+(?<tail>(?<head>[^/]+)" +
+                            r"(/\s*(?<others>(" + INI_AUTHOR + r"[,;.]\s+)+))?.*)$",
+                            re.U | re.VERBOSE)
     author_tag = re.compile(r"^\s*@NOAUTHOR@[\W\s]+(?<tail>.*)$")
     hasone = one_author.match(txt)
     hasdash = dash.match(txt)
     hasmulti = multi_author.match(txt)
     hassingle = single_name_authors.match(txt)
+    hasothers = and_others.match(txt)
     hastag = author_tag.match(txt)
     if hasmulti:
+        if verbose:
+            print("hasmulti:", hasmulti.groupdict())
         author = format_multi_authors(hasmulti.group('all'))
         tail = hasmulti.group('tail')
+    elif hasothers:
+        if verbose:
+            print("hasothers:", hasothers.groupdict())     
+        author = "{last}, {ini}; OTHERS".format(**hasothers.groupdict())
+        tail = hasothers.group('tail')
+        if hasothers.group('others'):
+            others = format_other_authors(hasothers.group('others'))
+            if others:
+                author = others
     elif hasone:
-        author = ", ".join([hasone.group('last'), hasone.group('ini')])
+        if verbose:
+            print("hasone:", hasone.groupdict())
+        author = "{last}, {ini}".format(**hasone.groupdict())
         if hasone.group('real'):
             author = "{0} [{1}]".format(author, hasone.group('real'))
         tail = hasone.group('tail')
@@ -218,6 +256,8 @@ a sequence is encountered. When an expected next item is missing, a
 'MISSING' tag is printed in the output CSV file.""")
     parser.add_argument('infile', help='Inpout file (txt)')
     parser.add_argument('outfile', help='Output file (csv)')
+    parser.add_argument('-v', '--verbose', help='Show regex debugging output',
+                        action='store_true')
     return parser.parse_args()
 
 
@@ -228,7 +268,7 @@ def main():
     csv_writer = csv.writer(out)
     author = None
     for num, stack in iter_records(numbered_lines(args.infile)):
-        author, row = extract_author(num, ' '.join(stack), author)
+        author, row = extract_author(num, ' '.join(stack), author, verbose=args.verbose)
         csv_writer.writerow(row)
 
 
