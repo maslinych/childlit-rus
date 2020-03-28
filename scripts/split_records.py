@@ -20,7 +20,7 @@ AUTHOR_NAME = r"""
 |\p{Lu}\p{Ll}{0,2}\.                              # А.
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{3,}(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.)) # Иван Ильич
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{0,2}\.              # Фенимор Д.
-|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.))) # Иоганн-Вольфганг; Шарль де
+|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+))) # Иоганн-Вольфганг; Шарль де
 |  # альтернатива — после запятой:
 ,\s+(?<ini>братья|\p{Lu}\p{Ll}+)(?=\.)                          # Гримм, братья
 )(\s+
@@ -248,6 +248,12 @@ are marked with ERRAUTHOR tag.
     return author, (num, author, tail)
 
 
+# def extract_title(row):
+#     head = row[:-1]
+#     tail = row[-1]
+#     re.compile(r'')
+    
+    
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
