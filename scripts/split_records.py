@@ -8,8 +8,9 @@ import argparse
 AUTHOR_NAME = r"""
 (?!Герой\sСоветского\s+Союза)
 (?<last>           # Фамилия:
-\p{Lu}\p{Ll}+      # Воронцов
+([Дд]['’])?\p{Lu}\p{Ll}+      # Воронцов / д'Амичис
 (-\p{Lu}\p{Ll}+|   # Воронцов-Вельяминов
+-(отец|старший)|   # Дюма-отец
 \s+\p{Lu}\p{Ll}+(?=,))?# Сервантес Сааведра, Мигель 
 )
 (\s+\((?<real>     # расшифровка псевдонима:
@@ -18,9 +19,10 @@ AUTHOR_NAME = r"""
 \s+(?<ini>                                        # инициалы или имена:
 \p{Lu}\p{Ll}{0,2}\.[\s-]?\p{Lu}\p{Ll}{0,2}\.      # Дм. Ив.; Г.-Х.
 |\p{Lu}\p{Ll}{0,2}\.                              # А.
-|\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{3,}(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.)) # Иван Ильич
+|\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{3,}(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+)) # Иван Ильич
+|\p{Lu}\p{Ll}+-(Булат|бао|ф[эе]й|и|мин|Фу|хуа|цзин?|линь|юй|нань|чжень|ян|заде)  # Хас-Булат, Юй-бао и тп.
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{0,2}\.              # Фенимор Д.
-|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+))) # Иоганн-Вольфганг; Шарль де
+|\p{Lu}\p{Ll}{3,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+))) # Василий; Иоганн-Вольфганг; Шарль де
 |  # альтернатива — после запятой:
 ,\s+(?<ini>братья|\p{Lu}\p{Ll}+)(?=\.)                          # Гримм, братья
 )(\s+
@@ -37,7 +39,7 @@ INI_AUTHOR = r"""
 (?<ini>\p{Lu}\p{Ll}{0,2}\.([\s-]?\p{Lu}\p{Ll}{0,2}\.)?)\s+
 (?<last>\p{Lu}\p{Ll}+(-\p{Lu}\p{Ll}+)?)
 """
-SINGLE_AUTHORS = r'Джамбул|Майн-Рид|Мольер|Эсхил|Айбек|Обос-Апер'
+SINGLE_AUTHORS = r'Джамбул|Майн-Рид|Мольер|Эсхил|Айбек|Обос-Апер|Уйда|Кукрыниксы|Конан-Дойль|Шолом-Алейхем|Эль-Регистан|д’Эрвильи|Лесник|Гайрати|Мирмухсин|Алтан-Хайша|Луда|Аригапуди|Стендаль|Эзоп|Физули|Элляй|Гомер|Сайяр|Плутарх|Фирдоуси|Сан-Марку|Фуиг-Куан|Сат-Окх'
 
 
 class BibItem(object):
@@ -200,12 +202,14 @@ are marked with ERRAUTHOR tag.
                             r"\s+и\s+др\.\s+(?<tail>(?<head>[^/]+)" +
                             r"(/\s*(?<others>(" + INI_AUTHOR + r"[,;.]\s+)+))?.*)$",
                             re.U | re.VERBOSE)
-    author_tag = re.compile(r"^\s*@NOAUTHOR@[\W\s]+(?<tail>.*)$")
+    noauthor_tag = re.compile(r"^\s*@NOAUTHOR@[[\W\s]--[«]]+(?<tail>.*)$", re.V1)
+    author_tag = re.compile(r"^\s*@AUTHOR:(?<all>[^@]+)@[[\W\s]--[«]]+(?<tail>.*)$", re.V1)
     hasone = one_author.match(txt)
     hasdash = dash.match(txt)
     hasmulti = multi_author.match(txt)
     hassingle = single_name_authors.match(txt)
     hasothers = and_others.match(txt)
+    hasnoauthor = noauthor_tag.match(txt)
     hastag = author_tag.match(txt)
     if hasmulti:
         if verbose:
@@ -239,8 +243,11 @@ are marked with ERRAUTHOR tag.
     elif hassingle:
         author = hassingle.group('last')
         tail = hassingle.group('tail')
-    elif hastag:
+    elif hasnoauthor:
         author = "NOAUTHOR"
+        tail = hasnoauthor.group('tail')
+    elif hastag:
+        author = hastag.group('all')
         tail = hastag.group('tail')
     else:
         author = "NOAUTHOR"
