@@ -4,6 +4,7 @@
 import regex as re
 import csv
 import argparse
+import sys
 
 AUTHOR_NAME = r"""
 (?!Герой\sСоветского\s+Союза)
@@ -117,13 +118,12 @@ def extract_number(line):
 
 def numbered_lines(infile):
     """Generator producing numbered lines as tuples"""
-    with open(infile, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith('#END'):
-                break
-            if line:
-                yield extract_number(line)
+    for line in infile:
+        line = line.strip()
+        if line.startswith('#END'):
+            break
+        if line:
+            yield extract_number(line)
 
 
 def iter_records(numlines, k=10):
@@ -267,8 +267,10 @@ identifies all lines that look like a numbered item. All non-itemlike
 lines are joined to the previous numbered line, until the next tem in
 a sequence is encountered. When an expected next item is missing, a
 'MISSING' tag is printed in the output CSV file.""")
-    parser.add_argument('infile', help='Inpout file (txt)')
-    parser.add_argument('outfile', help='Output file (csv)')
+    parser.add_argument('infile', nargs='?', help='Input file (txt)',
+                        type=argparse.FileType('r'), default=sys.stdin)
+    parser.add_argument('outfile', nargs='?', help='Output file (csv)',
+                        type=argparse.FileType('w'), default=sys.stdout)
     parser.add_argument('-v', '--verbose', help='Show regex debugging output',
                         action='store_true')
     return parser.parse_args()
@@ -277,8 +279,7 @@ a sequence is encountered. When an expected next item is missing, a
 def main():
     """main processing"""
     args = parse_arguments()
-    out = open(args.outfile, 'w')
-    csv_writer = csv.writer(out)
+    csv_writer = csv.writer(args.outfile)
     author = None
     for num, stack in iter_records(numbered_lines(args.infile)):
         author, row = extract_author(num, ' '.join(stack), author, verbose=args.verbose)
