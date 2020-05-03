@@ -5,6 +5,7 @@ import regex as re
 import csv
 import argparse
 import sys
+from collections import OrderedDict
 
 AUTHOR_NAME = r"""
 (?!Герой\sСоветского\s+Союза)
@@ -104,6 +105,23 @@ class BibItem(object):
             return self.num + self.suffix - other.num - other.suffix
 
 
+class Record(OrderedDict):
+    def __init__(self, tail='', start=0, end=0):
+        super(Record, self).__init__()
+        self.tail = tail
+        self.start = start
+        self.end = end
+
+    def serialize(self):
+        out = []
+        out.append(self.start)
+        out.append(self.end)
+        for k, v in self.items():
+            out.append(str(v))
+        out.append(self.tail)
+        return out
+
+
 def extract_number(line):
     """Detect if a line matches a pattern for a numbered bibliography item
     Return a tuple with a number and a text line. If a line doesn't have the
@@ -118,47 +136,76 @@ def extract_number(line):
 
 def numbered_lines(infile):
     """Generator producing numbered lines as tuples"""
-    for line in infile:
+    for lineno, line in enumerate(infile, start=1):
         line = line.strip()
         if line.startswith('#END'):
             break
         if line:
-            yield extract_number(line)
+            num, tail = extract_number(line)
+            yield (lineno, num, tail)
 
 
 def iter_records(numlines, k=10):
     """Join a series of numbered lines into a list of sequentially
-numbered items"""
+numbered items (Record instances with a defined 'num' key, tail
+attribute and start and end line numbers)
+    """
     itemno = 0
     stack = []
-    for n, txt in numlines:
+    startline = 0
+    for lineno, n, txt in numlines:
         if n == 0:
             num = 0
         else:
             num = BibItem(string=n)
         if num > itemno:
             if num - itemno == 1:
+                # we have a regular next item
                 if stack:
-                    yield (itemno, stack)
+                    rec = Record(tail = ' '.join(stack))
+                    rec['num'] = itemno
+                    rec.start = startline
+                    rec.end = lineno - 1
+                    yield rec
                     stack = []
+                    startline = lineno
             else:
                 if num - itemno > k:
+                    # gap in numbers is too large, unlikely to be the next
+                    # number, treat as a regular textual line (with an
+                    # accidental number in the beginning, like a year or
+                    # a printrun figure)
                     stack.append('{}. {}'.format(num, txt))
                     continue
-                yield (itemno, stack)
+                # we have a moderate gap in numbering, treat as next item
+                rec = Record(tail = ' '.join(stack))
+                rec['num'] = itemno
+                rec.start = startline
+                rec.end = lineno - 1
+                yield rec
                 stack = []
                 itemno += 1
+                startline = lineno
                 while num > itemno:
-                    yield (itemno, ['MISSING'])
+                    rec = Record(tail = 'MISSING', start = startline, end = lineno - 1)
+                    rec['num'] = itemno
+                    yield rec
                     itemno += 1
             itemno = num
             stack.append(txt)
         elif num == 0 and itemno > 0:
+            # non-numbered line, collect as a continuation of a curent item
             stack.append(txt)
         elif num < itemno:
+            # a lesser number, not a next item, treat as an item continuation
             stack.append('{}. {}'.format(num, txt))
     else:
-        yield (str(itemno), stack)
+        # end of file: yield a final record
+        rec = Record(tail = ' '.join(stack))
+        rec['num'] = str(itemno)
+        rec.start = startline
+        rec.end = lineno
+        yield rec
 
 
 def format_multi_authors(authors):
@@ -186,7 +233,7 @@ def format_other_authors(others):
     return "; ".join(out)
     
 
-def extract_author(num, txt, prev=None, verbose=False):
+def extract_author(rec, prev=None, verbose=False):
     """Process numbered lines, extract author name as a separate column,
 or indicate that it is missing with the NOAUTHOR tag. Inconsistencies
 are marked with ERRAUTHOR tag.
@@ -204,55 +251,54 @@ are marked with ERRAUTHOR tag.
                             re.U | re.VERBOSE)
     noauthor_tag = re.compile(r"^\s*@NOAUTHOR@[[\W\s]--[«]]+(?<tail>.*)$", re.V1)
     author_tag = re.compile(r"^\s*@AUTHOR:(?<all>[^@]+)@[[\W\s]--[«]]+(?<tail>.*)$", re.V1)
-    hasone = one_author.match(txt)
-    hasdash = dash.match(txt)
-    hasmulti = multi_author.match(txt)
-    hassingle = single_name_authors.match(txt)
-    hasothers = and_others.match(txt)
-    hasnoauthor = noauthor_tag.match(txt)
-    hastag = author_tag.match(txt)
+    hasone = one_author.match(rec.tail)
+    hasdash = dash.match(rec.tail)
+    hasmulti = multi_author.match(rec.tail)
+    hassingle = single_name_authors.match(rec.tail)
+    hasothers = and_others.match(rec.tail)
+    hasnoauthor = noauthor_tag.match(rec.tail)
+    hastag = author_tag.match(rec.tail)
     if hasmulti:
         if verbose:
             print("hasmulti:", hasmulti.groupdict())
-        author = format_multi_authors(hasmulti.group('all'))
-        tail = hasmulti.group('tail')
+        rec['author'] = format_multi_authors(hasmulti.group('all'))
+        rec.tail = hasmulti.group('tail')
     elif hasothers:
         if verbose:
             print("hasothers:", hasothers.groupdict())     
-        author = "{last}, {ini}; OTHERS".format(**hasothers.groupdict())
-        tail = hasothers.group('tail')
+        rec['author'] = "{last}, {ini}; OTHERS".format(**hasothers.groupdict())
+        rec.tail = hasothers.group('tail')
         if hasothers.group('others'):
             others = format_other_authors(hasothers.group('others'))
             if others:
-                author = others
+                rec['author'] = others
     elif hasone:
         if verbose:
             print("hasone:", hasone.groupdict())
-        author = "{last}, {ini}".format(**hasone.groupdict())
+        rec['author'] = "{last}, {ini}".format(**hasone.groupdict())
         if hasone.group('real'):
-            author = "{0} [{1}]".format(author, hasone.group('real'))
-        tail = hasone.group('tail')
+            rec['author'] = "{0} [{1}]".format(rec['author'], hasone.group('real'))
+        rec.tail = hasone.group('tail')
     elif hasdash:
         if prev is None:
-            author = "ERRAUTHOR"
+            rec['author'] = "ERRAUTHOR"
         elif prev == "NOAUTHOR":
-            author = "ERRAUTHOR"
+            rec['author'] = "ERRAUTHOR"
         else:
-            author = prev
-        tail = hasdash.group('tail')
+            rec['author'] = prev
+        rec.tail = hasdash.group('tail')
     elif hassingle:
-        author = hassingle.group('last')
-        tail = hassingle.group('tail')
+        rec['author'] = hassingle.group('last')
+        rec.tail = hassingle.group('tail')
     elif hasnoauthor:
-        author = "NOAUTHOR"
-        tail = hasnoauthor.group('tail')
+        rec['author'] = "NOAUTHOR"
+        rec.tail = hasnoauthor.group('tail')
     elif hastag:
-        author = hastag.group('all')
-        tail = hastag.group('tail')
+        rec['author'] = hastag.group('all')
+        rec.tail = hastag.group('tail')
     else:
-        author = "NOAUTHOR"
-        tail = txt
-    return author, (num, author, tail)
+        rec['author'] = "NOAUTHOR"
+    return rec
 
 
 # def extract_title(row):
@@ -281,9 +327,10 @@ def main():
     args = parse_arguments()
     csv_writer = csv.writer(args.outfile)
     author = None
-    for num, stack in iter_records(numbered_lines(args.infile)):
-        author, row = extract_author(num, ' '.join(stack), author, verbose=args.verbose)
-        csv_writer.writerow(row)
+    for rec in iter_records(numbered_lines(args.infile)):
+        row = extract_author(rec, author, verbose=args.verbose)
+        author = row['author']
+        csv_writer.writerow(row.serialize())
 
 
 if __name__ == '__main__':
