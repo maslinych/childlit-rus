@@ -1,0 +1,276 @@
+---
+title: "Скрипт. Незавершённый"
+author: "Роман Лисюков"
+date: "15 12 2020"
+output: html_document
+---
+
+---
+title: "Скрипт.Незавершённый"
+author: "Роман Лисюков"
+date: "15 12 2020"
+output: html_document
+---
+
+Перед началом работы, убедись, что в колонке с авторами/иллюстраторами отсутствуют знаки препинания между буквами в фамилии: точки, запятые. Также проверьте, чтобы в колонке с именами авторами/иллюстраторами не было названий произведений, например, "Ивашка и ведьма". Проследите, чтобы индексы не были указаны несколько раз с одним и тем же автором/иллюстратором. Имена каждого
+автора/иллюстратора должны быть написаны только в одном виде в обоих таблицах(бывают случаи, когда одно и то же лицо является автором и иллюстратором), например, только "Эндриксон Евг.", а не "Эндриксон Евг. М." и "Эндриксон Евг."
+
+Загрузи функции.
+```{r}
+preprocess = function(d, content){
+  if(content == "illustrators"){
+d$X2 = str_remove_all(d$X2, "[,]|[.]")
+d$X2 = str_replace_all(d$X2, "— ", "—")
+pattern = one_or_more('[[:digit:]]') %R%
+  "—" %R%
+  one_or_more('[[:digit:]]')
+ds = str_extract_all(d$X2, pattern, simplify = T)
+dataframe = data.frame(matrix(NA, nrow = nrow(d), ncol = 0))
+for(i in 1:ncol(ds)){
+  df = ds[,i]
+  df = as.data.frame(df)
+  df = separate(df, df, into = c("Ed.1", "Ed.x"), sep = "—")
+  df$Ed.x = as.numeric(as.character(df$Ed.x))
+  df$Ed.1 = as.numeric(as.character(df$Ed.1))
+  dataset = data.frame()
+  df = df %>%
+    mutate(Ed.x = ifelse(is.na(Ed.x), 0, Ed.x))
+  df = df %>%
+  mutate(Ed.1 = ifelse(is.na(Ed.1), 0, Ed.1))
+  for(i in 1:nrow(df)){
+    r = df[i,1]:df[i,2]
+    r = t(as.data.frame(r))
+    r = as.data.frame(r)
+    r = unite(r, "Sequence", 1:ncol(r), sep = ", ", remove = TRUE)
+    dataset = rbind(dataset, r)
+  }
+  row.names(dataset) = 1:nrow(dataset)
+  dataframe = cbind(dataframe, dataset)
+  dataset = data.frame()
+}
+for(i in 1:ncol(dataframe)){
+  dataframe[,i] = ifelse(dataframe[,i] == "0", "", dataframe[,i])
+}
+v0 = sprintf("Sequence %s", 1:ncol(dataframe))
+colnames(dataframe) = v0
+data = unite(dataframe, "Sequence", 1:ncol(dataframe), sep = ", ", remove = TRUE)
+data$Sequence = str_replace_all(data$Sequence, "[[:punct:]]", "")
+data = str_squish(data$Sequence)
+for(x in 1:ncol(dataframe)){
+  for(i in 1:nrow(d)){
+    d[i,2] = ifelse(str_detect(d[i,2], pattern) == T, str_replace(d[i,2], pattern, dataframe[i, x]), d[i,2])
+  }
+}
+d$X2 = str_replace_all(d$X2, ",", "")
+v = sprintf("Work %s", 1:max(str_count(d$X2, pattern = " ")+1))
+d = separate(d, X2, into = v, sep = " ")
+illus.list = d %>%
+  pivot_longer(!X1, names_to = "Work", values_to = "Index")
+illus.list = na.omit(illus.list)
+many_illus = illus.list %>%
+  count(Index)
+many_illus = many_illus %>%
+  filter(n < 3)
+illus.list = illus.list %>%
+  filter(Index %in% many_illus$Index)
+return(illus.list)
+}
+if(content == "authors"){
+  pattern4 = or(START %R% "Сост ", START %R% "Сост. ", START %R% "Сост и обраб. ", START %R% "В обработке ")
+  authors$X1 = str_remove(authors$X1, pattern4)
+  authors$X1 = str_remove(authors$X1, "и обраб. ")
+  authors$X1 = str_remove(authors$X1, " и др.")
+pattern = one_or_more('[[:digit:]]') %R%
+  "—" %R%
+  one_or_more('[[:digit:]]')
+d$X2 = str_replace_all(d$X2, "— ", "—")
+d$X2 = str_replace_all(d$X2, "—-", "—")
+bugs = str_extract_all(d$X1, pattern = "[[:digit:]]", simplify = T)
+bugs = as.data.frame(bugs)
+bugs = unite(bugs, col = "Work", sep = "", remove = T)
+for(i in 1:nrow(d)){
+    d[i,2] = ifelse(is.na(d[i,2]) == T, bugs[i,1], d[i,2])
+}
+d$X1 = str_remove_all(d$X1, pattern = "[[:digit:]]")
+authors.intervals = str_extract_all(d$X2, pattern, simplify = T)
+authors.wide = data.frame(matrix(NA, nrow = nrow(authors.intervals), ncol = 0))
+for(i in 1:ncol(authors.intervals)){
+  df = authors.intervals[,i]
+  df = as.data.frame(df)
+  df = separate(df, df, into = c("Ed.1", "Ed.x"), sep = "—")
+  df$Ed.x = as.numeric(as.character(df$Ed.x))
+  df$Ed.1 = as.numeric(as.character(df$Ed.1))
+  dataset = data.frame()
+  df = df %>%
+    mutate(Ed.x = ifelse(is.na(Ed.x), 0, Ed.x))
+  df = df %>%
+    mutate(Ed.1 = ifelse(is.na(Ed.1), 0, Ed.1))
+  for(i in 1:nrow(df)){
+    r = df[i,1]:df[i,2]
+    r = t(as.data.frame(r))
+    r = as.data.frame(r)
+    r = unite(r, "Sequence", 1:ncol(r), sep = ", ", remove = TRUE)
+    dataset = rbind(dataset, r)
+  }
+  row.names(dataset) = 1:nrow(dataset)
+  authors.wide = cbind(authors.wide, dataset)
+  dataset = data.frame()
+}
+for(i in 1:ncol(authors.wide)){
+  authors.wide[,i] = ifelse(authors.wide[,i] == "0", "", authors.wide[,i])
+}
+v1 = sprintf("Sequence %s", 1:ncol(authors.wide))
+colnames(authors.wide) = v1
+for(x in 1:ncol(authors.wide)){
+  for(i in 1:nrow(d)){
+    d[i,2] = ifelse(str_detect(d[i,2], pattern) == T, str_replace(d[i,2], pattern, authors.wide[i, x]), d[i,2])
+  }
+}
+pattern0 = or("[[:space:]]" %R%
+  "и" %R%
+  "[[:space:]]", "," %R% "[[:space:]]") 
+v2 = sprintf("Author %s", 1:max(str_count(d$X1, pattern0)+1))
+d = separate(d, X1, into = v2, sep = pattern0)
+authors.list = d %>% 
+  pivot_longer(c("Author 1", "Author 2", "Author 3"), 'Author', 4)
+authors.list = na.omit(authors.list)
+colnames(authors.list) = c("Work", "Status", "Author")
+authors.list = authors.list %>%
+  select(Author, Work)
+authors.list$Work = str_remove_all(authors.list$Work, "[.]")
+v3 = sprintf("Work %s", 1:max(str_count(authors.list$Work, pattern = ", ")+1))
+authors.list = separate(authors.list, Work, into = v3, sep = ", ")
+authors.list = authors.list %>%
+  pivot_longer(!Author, names_to = "Work", values_to = "Index")
+authors.list = na.omit(authors.list)
+many_authors = authors.list %>%
+  count(Index)
+many_authors = many_authors %>%
+  filter(n < 3)
+authors.list = authors.list %>%
+  filter(Index %in% many_authors$Index)
+return(authors.list)
+}
+}
+```
+
+```{r}
+adjacency.mat = function(authors.list, illus.list){
+proto_edge_list = authors.list %>%
+  inner_join(illus.list, by = "Index")
+colnames(proto_edge_list) = c("Author", "Work", "Index", "Illustrator", "Art")
+edge_list = proto_edge_list %>%
+  select(-Work, -Index, - Art)
+adj.mat = edge_list %>%
+  count(Author, Illustrator)
+adj.mat = adj.mat %>%
+  cast_sparse(row = Author, column = Illustrator, value = n)
+adj.mat = as.matrix(adj.mat)
+return(adj.mat)
+}
+```
+
+```{r}
+unimodal = function(adj.mat, content){
+  if(content == "a-a"){
+    adj.mat.a = adj.mat %*% t(adj.mat)
+    return(adj.mat.a)
+  }
+  if(content == "i-i"){  
+    adj.mat.i = t(adj.mat) %*% adj.mat
+    return(adj.mat.i)
+  }
+}
+```
+
+```{r}
+attribute = function(authors.list, illus.list){
+proto_edge_list = authors.list %>%
+  inner_join(illus.list, by = "Index")
+colnames(proto_edge_list) = c("Author", "Work", "Index", "Illustrator", "Art")
+edge_list = proto_edge_list %>%
+  select(-Work, -Index, - Art)
+authors_attr = edge_list %>%
+  select(Author) %>%
+  mutate(Status = "Author")
+illus_attr = edge_list %>%
+  select(Illustrator) %>%
+  mutate(Status = "Illustrator")
+colnames(authors_attr) = c('Artist', 'Status')
+colnames(illus_attr) = c('Artist', 'Status')
+  attr = rbind(authors_attr, illus_attr)
+  attr = unique(attr)
+  return(attr)
+}
+```
+
+
+```{r}
+measure = function(net, content){
+if(content == "bimodal"){
+names = V(net)$name
+statuses = V(net)$Status
+degree = degree(net)
+btwnss = betweenness(net)
+clsnss = closeness(net)
+metrics = data.frame(Name = names, Status = statuses, Degree = degree, Betweeness = btwnss,
+                     Closeness = clsnss)
+}
+  if(content == "unimodal"){
+    degree = degree(net)
+    btwnss = betweenness(net)
+    clsnss = closeness(net)
+    metrics = data.frame(Degree = degree, Betweeness = btwnss,
+                         Closeness = clsnss)
+  }
+return(metrics)
+  }
+```
+
+Загрузи датасеты с авторами и иллюстраторами
+
+```{r}
+authors = read_tsv("C:/Users/Roman.LAPTOP-088R18A9/Desktop/1946-48_авт_готов.txt", col_names = F)
+'имя датасета' = read_tsv("путь к файлу", col_names = F)
+```
+
+Эта функция создаёт список работ, который позже пригодится для создания матрицы смежности. Первый аргумент - датасет с авторами или иллюстраторами. В скобках вместо dataset напиши названия датасета, далее укажи содержание таблицы: если это авторы, то "authors"(в кавычках), если иллюстраторы, то "illustrators". Заполнив аргументы функции, просто запусти чанк. Оба списка по авторам и по иллюстраторам будут далее необходимы.
+
+```{r}
+authors.list = preprocess(dataset, "authors")
+```
+
+
+Функция ниже создаёт матрицу смежности, которая нужна при создании бимодального графа. Первый аргумент список работ авторов, второй - список работ иллюстраторов. Порядок строгий, его нельзя нарушать.
+
+```{r}
+adj.mat = adjacency.mat(authors.list, illus.list)
+```
+
+
+Функция unimodal() создаёт матрицу смежности для унимодального графа. В первом аргументе укажите
+матрицу смежности, созданную в предыдущем шаге. Во втором - виды связей в унимодальном графе, "a-a" или "i-i".
+
+```{r}
+adj.mat.a = unimodal()
+```
+
+
+attribute() создаёт список аттрибутов для вершин графа. Первый аргумент - список работ авторов, второй список работ иллюстраторов. Строго в таком порядке.
+
+```{r}
+attr = attribute()
+```
+
+measure() подсчитывает метрики центральности - closeness, degree, betweeness. Для выполнения функции впиши название графа, потом - содержание сети: 'bimodal'(для автор-иллюстратор) или "unimodal"(для иллюстратор-иллюстратор, автор-автор) Также ниже я включил код для построения таблицы, по которой можно удобно наблюдать значения метрик для узлов.
+```{r}
+stats = measure()
+  stats %>%
+  arrange(desc(Betweeness))%>%
+  kbl()%>%
+  kable_material_dark()
+```
+Далее идёт код, который визуализирует сеть. net - название графа.
+```{r}
+plot.igraph(net, vertex.size = degree(net)*1,5, vertex.label = NA)
+```
