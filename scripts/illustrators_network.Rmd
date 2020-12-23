@@ -12,10 +12,13 @@ date: "15 12 2020"
 output: html_document
 ---
 
+
 Перед началом работы, убедись, что в колонке с авторами/иллюстраторами отсутствуют знаки препинания между буквами в фамилии: точки, запятые. Также проверьте, чтобы в колонке с именами авторами/иллюстраторами не было названий произведений, например, "Ивашка и ведьма". Проследите, чтобы индексы не были указаны несколько раз с одним и тем же автором/иллюстратором. Имена каждого
 автора/иллюстратора должны быть написаны только в одном виде в обоих таблицах(бывают случаи, когда одно и то же лицо является автором и иллюстратором), например, только "Эндриксон Евг.", а не "Эндриксон Евг. М." и "Эндриксон Евг."
 
+
 Загрузи функции.
+
 ```{r}
 preprocess = function(d, content){
   if(content == "illustrators"){
@@ -204,6 +207,41 @@ colnames(illus_attr) = c('Artist', 'Status')
 }
 ```
 
+```{r}
+network = function(matrix, attr.s, content){
+  if(content == "a-i"){
+net = graph_from_incidence_matrix(matrix, directed = F, weighted = T, multiple = T)
+V(net)$Status = attr.s$Status
+V(net)$color = ifelse(V(net)$Status == "Author", "lightsteelblue3", "firebrick3")
+V(net)$shape = ifelse(V(net)$Status == "Illustrator", "square", "circle")
+}
+  if(content == "a-a"){
+    net = graph_from_adjacency_matrix(matrix, diag = F, mode = "undirected", weighted = T)
+    V(net)$color = "lightsteelblue3"
+    V(net)$shape = 'circle'
+  }
+  if(content == "i-i"){
+    net = graph_from_adjacency_matrix(matrix, diag = F, mode = "undirected", weighted = T)
+    V(net)$color = "firebrick3"
+    V(net)$shape = 'square'
+  }
+  return(net)
+}
+```
+
+```{r}
+visualize = function(net, content, label.size, node.size, link.width){
+  if(content == "general"){
+return(plot.igraph(net, vertex.size = node.size, vertex.label = NA, edge.width = link.width))
+  }
+  if(content == "communities"){
+    return(plot(net, vertex.size = node.size, edge.width = link.width, vertex.label.cex = label.size, vertex.label = V(net)$community))
+  }
+  if(content == "community"){
+    return(plot(net, vertex.size = node.size, vertex.label.cex = label.size, edge.width = link.width))
+  }
+    }
+```
 
 ```{r}
 measure = function(net, content){
@@ -227,12 +265,31 @@ return(metrics)
   }
 ```
 
+```{r}
+com.detect = function(net){ 
+  cliques = net
+  set.seed(1234)
+  fgcommune <- fastgreedy.community(cliques, weights = E(cliques)$weight)
+  V(cliques)$community = fgcommune$membership
+  V(cliques)$color = V(cliques)$community
+  return(cliques)
+}
+```
+
+```{r}
+drop.com = function(net, x){
+net.r = delete.vertices(net, !V(net)$community %in% x)
+}
+```
+
+
 Загрузи датасеты с авторами и иллюстраторами
 
 ```{r}
 authors = read_tsv("C:/Users/Roman.LAPTOP-088R18A9/Desktop/1946-48_авт_готов.txt", col_names = F)
 'имя датасета' = read_tsv("путь к файлу", col_names = F)
 ```
+
 
 Эта функция создаёт список работ, который позже пригодится для создания матрицы смежности. Первый аргумент - датасет с авторами или иллюстраторами. В скобках вместо dataset напиши названия датасета, далее укажи содержание таблицы: если это авторы, то "authors"(в кавычках), если иллюстраторы, то "illustrators". Заполнив аргументы функции, просто запусти чанк. Оба списка по авторам и по иллюстраторам будут далее необходимы.
 
@@ -262,7 +319,16 @@ attribute() создаёт список аттрибутов для вершин
 attr = attribute()
 ```
 
+
+Функция ниже создаёт граф. adj.mat - матрица смежности, построенная на предыдущих шагах; attr - список аттрибутов вершин графа(актуален только для бимодальной сети); content - содержание данных: 'bimodal' для сети автор-иллюстратор, 'unimodal' для сети автор-автор или иллюстратор-иллюстратор.
+
+```{r}
+net = network(adj.mat, attr, content)
+```
+
+
 measure() подсчитывает метрики центральности - closeness, degree, betweeness. Для выполнения функции впиши название графа, потом - содержание сети: 'bimodal'(для автор-иллюстратор) или "unimodal"(для иллюстратор-иллюстратор, автор-автор) Также ниже я включил код для построения таблицы, по которой можно удобно наблюдать значения метрик для узлов.
+
 ```{r}
 stats = measure()
   stats %>%
@@ -270,7 +336,31 @@ stats = measure()
   kbl()%>%
   kable_material_dark()
 ```
-Далее идёт код, который визуализирует сеть. net - название графа.
+
+
+Далее иcпользуется функция, которая визуализирует сеть. net - название графа, content - содержание("communities" - если сеть с выделенными сообществами в ней, "community" - если сеть содержит только одно сообщество, "general" - обычная сеть). Остальные аргументы - label.size, node.size, link.width обозначают размер названия узла, размер самого узла и ширину ребра соответственно. Эти значения указываются цифрами, либо математическими операциями с метриками центральности узлов, например, degree(net)*1,5.
+
 ```{r}
-plot.igraph(net, vertex.size = degree(net)*1,5, vertex.label = NA)
+visualize(net, content, label.size, node.size, link.width)
+```
+
+
+Следующая функция выделяет сообщества на основе алгоритма Fast-Greedy. net - граф.
+
+```{r}
+net.c = com.detect(net)
+```
+
+
+drop.com() оставляет в сети только сообщества, указанные в функции. Сообщества указываются с числами в параметре x - либо одно число, либо вектор, либо промежуток вида y:z. 
+
+```{r}
+net.r = drop.com(net, x)
+```
+
+
+Ниже - код, подсчитывающий плотность сети. loops - параметр, который учитывает использование петель в сети при подсчёте: T, если хочешь учитывать петли в расчёте плотности, F - если не хочешь.
+
+```{r}
+graph.density(net.a, loops = T)
 ```
