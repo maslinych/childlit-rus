@@ -174,15 +174,13 @@ return(adj.mat)
 ```
 
 ```{r}
-unimodal = function(adj.mat, content){
-  if(content == "a-a"){
-    adj.mat.a = adj.mat %*% t(adj.mat)
-    return(adj.mat.a)
+unimodal = function(incidence.mat, illustrators=FALSE){
+  if(illustrators) {
+      incidence.mat <- t(incidence.mat)
+      }
+    adj.mat = incidence.mat %*% t(incidence.mat)
   }
-  if(content == "i-i"){  
-    adj.mat.i = t(adj.mat) %*% adj.mat
-    return(adj.mat.i)
-  }
+    return(adj.mat)
 }
 ```
 
