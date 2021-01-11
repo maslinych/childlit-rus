@@ -174,8 +174,8 @@ return(adj.mat)
 ```
 
 ```{r}
-unimodal = function(incidence.mat, illustrators=FALSE){
-  if(illustrators) {
+unimodal = function(incidence.mat, transpose=FALSE){
+  if(transpose) {
       incidence.mat <- t(incidence.mat)
       }
     adj.mat = incidence.mat %*% t(incidence.mat)
