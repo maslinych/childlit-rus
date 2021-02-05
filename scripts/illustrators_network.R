@@ -1,100 +1,48 @@
 library(readr)
 library(tidyr)
-library(reshape2)
-library(tidyverse)
+library(dplyr)
+library(stringr)
 library(rebus)
 library(igraph)
-library(tidytext)
 library(optparse)
+library(gsubfn)
 
-tidy <- function(data, authors=FALSE) {
+int_to_seq <- function(interval) {
+    ss <- str_split(interval, "—")[[1]]
+    return(paste(seq(ss[1], ss[2]), collapse=", "))
+}
+
+tidy_authors <- function(data) {
+      comp.ed <- or(START %R% "Сост ",
+                    START %R% "Сост. ",
+                    START %R% "Сост и обраб. ",
+                    START %R% "В обработке ")
+      data %>% 
+          mutate(author = str_remove(author, comp.ed)) %>%
+          mutate(author = str_remove(author, "и обраб.\\s*")) %>%
+          mutate(author = str_remove(author, "\\s+и\\s+др.")) %>%
+          mutate(author = str_replace_all(author, "\\s+и\\s+", ", "))
+}
+
+prepare_data <- function(data, authors=FALSE) {
   data <- data %>% 
-    mutate(volume = str_remove_all(volume, "[,]|[.]")) %>%
-    mutate(volume = str_replace_all(volume, "— ", "—")) %>%
-    mutate(volume = str_replace_all(volume, " — ", "—"))
-  if(authors){
-    data <- data %>% 
-      mutate(volume = str_replace_all(volume, "—-", "—"))
-    comp.ed <- or(START %R% "Сост ",
-                  START %R% "Сост. ",
-                  START %R% "Сост и обраб. ",
-                  START %R% "В обработке ")
-    data <- data %>%
-      mutate(author = str_remove(author, comp.ed)) %>%
-      mutate(author = str_remove(author, "и обраб. ")) %>%
-      mutate(author = str_remove(author, " и др."))
-    bugs <- unite(as.data.frame(str_extract_all(data$author, pattern = "[[:digit:]]", simplify = TRUE)), col = "Work", sep = "", remove = TRUE)
-    data <- data %>%
-      mutate(volume = ifelse(is.na(volume) == TRUE, bugs[,1], volume)) %>%
-      mutate(author = str_remove_all(author, pattern = "[[:digit:]]"))
+      mutate(volume = str_remove_all(volume, "[.]")) %>%
+      mutate(volume = str_replace_all(volume, "\\s*—-?\\s*", "—")) %>%
+      mutate(volume = gsubfn("\\d+—\\d+", int_to_seq, volume))
+  if(authors) {
+      data <- tidy_authors(data)
   }
   return(data)
 }
 
-int_extract <- function(cleaned.data) {
-  interval <- one_or_more('[[:digit:]]') %R%
-    "—" %R%
-    one_or_more('[[:digit:]]')
-  intervals <- str_extract_all(cleaned.data$volume, interval, simplify = TRUE)
-  return(intervals)
-}
-
-int_to_seq <- function(intervals) {
-  seq <- data.frame(matrix(NA, nrow = nrow(intervals), ncol = 0))
-  for(i in 1:ncol(intervals)){
-    col <- intervals[,i]
-    col <- as.data.frame(col)
-    col <- separate(col, col, into = c("Ed.1", "Ed.x"), sep = "—")
-    col <- col %>%
-      mutate(Ed.x = as.numeric(as.character(col$Ed.x))) %>% 
-      mutate(Ed.1 = as.numeric(as.character(col$Ed.1))) %>%
-      mutate(Ed.x = ifelse(is.na(Ed.x), 0, Ed.x)) %>%
-      mutate(Ed.1 = ifelse(is.na(Ed.1), 0, Ed.1))
-    dataset <- data.frame()
-    for(i in 1:nrow(col)){
-      r <- col[i,1]:col[i,2]
-      r <- t(as.data.frame(r))
-      r <- as.data.frame(r)
-      r <- unite(r, "Sequence", 1:ncol(r), sep = ", ", remove = TRUE)
-      dataset <- rbind(dataset, r)
-    }
-    row.names(dataset) <- 1:nrow(dataset)
-    seq <- cbind(seq, dataset)
-  }
-  return(seq)
-}
-
-int_replace <- function(seq, cleaned.data, content) {
-  for(i in 1:ncol(seq)){
-    seq[,i] <- ifelse(seq[,i] == "0", "", seq[,i])
-  }
-  seq.col.naming <- sprintf("Sequence %s", 1:ncol(seq))
-  colnames(seq) <- seq.col.naming
-  interval <- one_or_more('[[:digit:]]') %R%
-    "—" %R%
-    one_or_more('[[:digit:]]')
-  for(x in 1:ncol(seq)){
-    for(i in 1:nrow(cleaned.data)){
-      cleaned.data[i,2] <- ifelse(str_detect(cleaned.data[i,2], interval) == TRUE, str_replace(cleaned.data[i,2], interval, seq[i, x]), cleaned.data[i,2])
-    }
-  }
-  if(content == "illustrators"){
-    cleaned.data$volume <- str_replace_all(cleaned.data$volume, "[[:punct:]]", "")
-    cleaned.col.naming <- sprintf("Work %s", 1:max(str_count(cleaned.data$volume, pattern = " ")+1))
-    cleaned.data <- separate(cleaned.data, volume, into = cleaned.col.naming, sep = " ")
-    return(cleaned.data)
-  }
-  if(content == "authors"){
-    many.authors <- or("[[:space:]]" %R%
-                         "и" %R%
-                        "[[:space:]]",
-                      "," %R%
-                        "[[:space:]]") 
-    cleaned.authors.col.naming <- sprintf("Author %s", 1:max(str_count(cleaned.data$author, many.authors)+1))
-    cleaned.data <- separate(cleaned.data, author, into = cleaned.authors.col.naming, sep = many.authors)
-    cleaned.data$volume <- str_remove_all(cleaned.data$volume, "[[:punct:]]")
-    return(cleaned.data)
-  }
+to_long_format <- function(data, authors=TRUE) {
+    out <- data %>%
+        separate_rows(volume, "\\s*,\\s*")
+    if (authors) {
+        out <- out %>%
+            separate_rows(author, "\\s*,\\s*")
+    } 
+    return(out)
 }
 
 vol_list <- function(intervals.data, content, period) {
@@ -127,6 +75,15 @@ vol_list <- function(intervals.data, content, period) {
   write.csv(list, paste(period, content, "vol_list.csv", sep = "_"), row.names = FALSE)
   return(list)
 }
+
+filter_data <- function(data) {
+    data %>%
+        na.omit %>% 
+        group_by(volume) %>%
+        filter(n() < 3)
+}
+
+
 
 edge.list <- function(authors.list, illus.list, period) {
   proto.edge.list <- authors.list %>%
@@ -252,11 +209,11 @@ parser <- add_option(parser, c("-y", "--years"),
 args <- parse_args(parser)
 
 main <- function(args) {
-  setwd(args$outdir)
   illus <- read_tsv(args$inillus, col_names = c("illustrator", "volume"))
-  authors <- read_tsv(args$inauthors, col_names = c('author', 'volume'))
-  illus.tidy <- tidy(illus)
-  authors.tidy <- tidy(authors, TRUE)
+  authors <- read_tsv(args$inauthors, col_names = c("author", "volume"))
+  setwd(args$outdir)
+  illus.tidy <- prepare_data(illus)
+  authors.tidy <- prepare_data(authors, TRUE)
   illus.int <- int_extract(illus.tidy)
   authors.int <- int_extract(authors.tidy)
   illus.seq <- int_to_seq(illus.int)
@@ -284,7 +241,7 @@ main <- function(args) {
     net.r <- select.com(net.c, i)
     visualize(net.r, content = "single community", args$years, filename = paste(paste("#", i, sep = ""), ".png",  sep = "_"))
     metrics.r <- measure(net.r, TRUE, "single_community", args$years, paste(paste("#", i, sep = ""), ".csv", sep = "_"))
-  }
+ }
   metrics.i <- measure(net.i, FALSE, "illustrators", args$years, ".csv")
   visualize(net.i, content = "general", args$years, paste("illustrators", ".png", sep = ""))
   net.i.c <- com.detect(net.i, "illustrators", args$years)
