@@ -35,16 +35,30 @@ prepare_data <- function(data, authors=FALSE) {
   return(data)
 }
 
-to_long_format <- function(data, authors=TRUE) {
+to_long_format <- function(data, authors=FALSE) {
     out <- data %>%
-        separate_rows(volume, "\\s*,\\s*")
+        separate_rows(volume, sep = "\\s*,\\s*")
     if (authors) {
         out <- out %>%
-            separate_rows(author, "\\s*,\\s*")
+            separate_rows(author, sep = "\\s*,\\s*")
     } 
     return(out)
 }
 
+filter_data <- function(data) {
+    data %>%
+        na.omit %>% 
+        group_by(volume) %>%
+        filter(n() < 3)
+}
+
+preprocess <- function(data, authors=FALSE) {
+    data %>%
+        prepare_data(authors=authors) %>%
+        to_long_format(authors=authors) %>%
+        filter_data
+}
+    
 vol_list <- function(intervals.data, content, period) {
   if(content == "authors"){
     intervals.data <- intervals.data %>% 
@@ -76,12 +90,6 @@ vol_list <- function(intervals.data, content, period) {
   return(list)
 }
 
-filter_data <- function(data) {
-    data %>%
-        na.omit %>% 
-        group_by(volume) %>%
-        filter(n() < 3)
-}
 
 
 
@@ -209,19 +217,11 @@ parser <- add_option(parser, c("-y", "--years"),
 args <- parse_args(parser)
 
 main <- function(args) {
-  illus <- read_tsv(args$inillus, col_names = c("illustrator", "volume"))
-  authors <- read_tsv(args$inauthors, col_names = c("author", "volume"))
-  setwd(args$outdir)
-  illus.tidy <- prepare_data(illus)
-  authors.tidy <- prepare_data(authors, TRUE)
-  illus.int <- int_extract(illus.tidy)
-  authors.int <- int_extract(authors.tidy)
-  illus.seq <- int_to_seq(illus.int)
-  authors.seq <- int_to_seq(authors.int)
-  illus.wide <- int_replace(illus.seq, illus.tidy, "illustrators")
-  authors.wide <- int_replace(authors.seq, authors.tidy, "authors")
-  illus.list <- vol_list(illus.wide, "illustrators", args$years)
-  authors.list <- vol_list(authors.wide, "authors", args$years)
+    illus.list <- read_tsv(args$inillus, col_names = c("illustrator", "volume")) %>%
+        preprocess
+    authors.list <- read_tsv(args$inauthors, col_names = c("author", "volume")) %>%
+        preprocess(authors=TRUE)
+    setwd(args$outdir)
   el <- edge.list(authors.list, illus.list, args$years)
   inc.mat <- incidence.mat(el)
   adj.mat.a <- adjacency.mat(inc.mat)
