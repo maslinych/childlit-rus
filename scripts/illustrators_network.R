@@ -6,108 +6,247 @@ library(rebus)
 library(igraph)
 library(optparse)
 library(gsubfn)
+library(tidytext)
 
-int_to_seq <- function(interval) {
-    ss <- str_split(interval, "â€”")[[1]]
-    return(paste(seq(ss[1], ss[2]), collapse=", "))
+correct_ranges = function(data) {
+  data = data %>% 
+    mutate(volume = str_replace_all(volume, "(?<=\\d{1,4})-(?=[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú])", "")) %>%
+    mutate(volume = str_replace_all(volume, "(\\s*—-?\\s*|(?<=\\d{1,4})-(?=\\d{1,4}))", "—")) %>%
+    mutate(volume = str_replace_all(volume, "[/.?*,\\-']", " ")) %>%
+    mutate(volume = str_squish(volume))
+  first_pattern_ranges = "(?<!\\d)\\d{3}[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?—\\d{2}(?!\\d)[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?"
+  second_pattern_ranges = "(?<!\\d)\\d{4}[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?—\\d{2}(?!\\d)[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?"
+  third_pattern_ranges = "(?<!\\d)\\d{4}[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?—\\d{1}(?!\\d)[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?"
+  fourth_pattern_ranges = "(?<!\\d)\\d{3}[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?—\\d{1}(?!\\d)[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?"
+  fifth_pattern_ranges = "(?<!\\d)\\d{2}[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?—\\d{1}(?!\\d)[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?"
+  sixth_pattern_ranges = "(?<!\\d)\\d{4}[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?—\\d{3}(?!\\d)[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]?"
+  #patterns_ranges = c(first_pattern_ranges, second_pattern_ranges, third_pattern_ranges, fourth_pattern_ranges, 
+  #                    fifth_pattern_ranges, sixth_pattern_ranges)
+  #addition_patterns = c('^\\d', '^\\d{2}', '^\\d{3}', '^\\d{2}', '^\\d{1}', '^\\d{1}')
+  #for(i in patterns_ranges, x in addition_patterns){
+  if(sum(str_detect(data$volume, first_pattern_ranges)) != 0){
+    ranges = str_extract_all(data$volume, first_pattern_ranges, simplify = TRUE)
+    for(i in 1:ncol(ranges)){
+      col_range = ranges[,i]
+      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = col_range %>%
+        mutate(omitted_number = str_extract(col_range$V1, '^\\d')) %>%
+        mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
+        select(-omitted_number) %>%
+        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
+        mutate(range = ifelse(range == "—NA", "", range))
+      data = data %>%
+        mutate(volume = ifelse(str_detect(volume, first_pattern_ranges), str_replace(volume, 
+                                                                                     first_pattern_ranges, 
+                                                                                     col_range$range), volume))
+    }
+  }
+  if(sum(str_detect(data$volume, second_pattern_ranges)) != 0){
+    ranges = str_extract_all(data$volume, second_pattern_ranges, simplify = TRUE)
+    for(i in 1:ncol(ranges)){
+      col_range = ranges[,i]
+      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = col_range %>%
+        mutate(omitted_number = str_extract(col_range$V1, '^\\d{2}')) %>%
+        mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
+        select(-omitted_number) %>%
+        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
+        mutate(range = ifelse(range == "—NA", "", range))
+      data = data %>%
+        mutate(volume = ifelse(str_detect(volume, second_pattern_ranges), str_replace(volume, 
+                                                                                     second_pattern_ranges, 
+                                                                                     col_range$range), volume))
+    }
+  }
+  if(sum(str_detect(data$volume, third_pattern_ranges)) != 0){
+    ranges = str_extract_all(data$volume, third_pattern_ranges, simplify = TRUE)
+    for(i in 1:ncol(ranges)){
+      col_range = ranges[,i]
+      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = col_range %>%
+        mutate(omitted_number = str_extract(col_range$V1, '^\\d{3}')) %>%
+        mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
+        select(-omitted_number) %>%
+        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
+        mutate(range = ifelse(range == "—NA", "", range))
+      data = data %>%
+        mutate(volume = ifelse(str_detect(volume, third_pattern_ranges), str_replace(volume, 
+                                                                                      third_pattern_ranges, 
+                                                                                      col_range$range), volume))
+    }
+  }
+  if(sum(str_detect(data$volume, fourth_pattern_ranges)) != 0){
+    ranges = str_extract_all(data$volume, fourth_pattern_ranges, simplify = TRUE)
+    for(i in 1:ncol(ranges)){
+      col_range = ranges[,i]
+      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = col_range %>%
+        mutate(omitted_number = str_extract(col_range$V1, '^\\d{2}')) %>%
+        mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
+        select(-omitted_number) %>%
+        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
+        mutate(range = ifelse(range == "—NA", "", range))
+      data = data %>%
+        mutate(volume = ifelse(str_detect(volume, fourth_pattern_ranges), str_replace(volume, 
+                                                                                     fourth_pattern_ranges, 
+                                                                                     col_range$range), volume))
+    }
+  }
+  if(sum(str_detect(data$volume, fifth_pattern_ranges)) != 0){
+    ranges = str_extract_all(data$volume, fifth_pattern_ranges, simplify = TRUE)
+    for(i in 1:ncol(ranges)){
+      col_range = ranges[,i]
+      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = col_range %>%
+        mutate(omitted_number = str_extract(col_range$V1, '^\\d{1}')) %>%
+        mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
+        select(-omitted_number) %>%
+        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
+        mutate(range = ifelse(range == "—NA", "", range))
+      data = data %>%
+        mutate(volume = ifelse(str_detect(volume, fifth_pattern_ranges), str_replace(volume, 
+                                                                                      fifth_pattern_ranges, 
+                                                                                      col_range$range), volume))
+    }
+  }
+  if(sum(str_detect(data$volume, sixth_pattern_ranges)) != 0){
+    ranges = str_extract_all(data$volume, sixth_pattern_ranges, simplify = TRUE)
+    for(i in 1:ncol(ranges)){
+      col_range = ranges[,i]
+      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = col_range %>%
+        mutate(omitted_number = str_extract(col_range$V1, '^\\d{1}')) %>%
+        mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
+        select(-omitted_number) %>%
+        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
+        mutate(range = ifelse(range == "—NA", "", range))
+      data = data %>%
+        mutate(volume = ifelse(str_detect(volume, sixth_pattern_ranges), str_replace(volume, 
+                                                                                     sixth_pattern_ranges, 
+                                                                                     col_range$range), volume))
+    }
+  }
+  #}
+  return(data)
 }
 
-tidy_authors <- function(data) {
-      comp.ed <- or(START %R% "Ð¡Ð¾ÑÑ‚ ",
-                    START %R% "Ð¡Ð¾ÑÑ‚. ",
-                    START %R% "Ð¡Ð¾ÑÑ‚ Ð¸ Ð¾Ð±Ñ€Ð°Ð±. ",
-                    START %R% "Ð’ Ð¾Ð±Ñ€Ð°Ð±Ð¾Ñ‚ÐºÐµ ")
-      data %>% 
-          mutate(author = str_remove(author, comp.ed)) %>%
-          mutate(author = str_remove(author, "Ð¸ Ð¾Ð±Ñ€Ð°Ð±.\\s*")) %>%
-          mutate(author = str_remove(author, "\\s+Ð¸\\s+Ð´Ñ€.")) %>%
-          mutate(author = str_replace_all(author, "\\s+Ð¸\\s+", ", "))
-}
-
-prepare_data <- function(data, authors=FALSE) {
-  data <- data %>% 
-      mutate(volume = str_remove_all(volume, "[.]")) %>%
-      mutate(volume = str_replace_all(volume, "\\s*â€”-?\\s*", "â€”")) %>%
-      mutate(volume = gsubfn("\\d+â€”\\d+", int_to_seq, volume))
-  if(authors) {
-      data <- tidy_authors(data)
+check_for_letters <- function(data) {
+  first_pattern <- "\\d+[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]—"
+  second_pattern <- "—\\d+[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]"
+  if(sum(str_detect(data$volume, first_pattern)) != 0){
+    first_pattern_indexes <- as.data.frame(str_extract_all(
+      data$volume, first_pattern, simplify = TRUE))
+    colnames(first_pattern_indexes) <- c("letters")
+    first_pattern_indexes <- first_pattern_indexes %>%
+      mutate(numbers = str_replace_all(first_pattern_indexes$letters, 
+                                       "[àáâãäå¸æçèéêëìíîïðñòóôõö÷øùýþÿûüú]", 
+                                       "")) %>%
+      mutate(numbers = str_replace(numbers, "—", "")) %>%
+      mutate(numbers = as.numeric(as.character(numbers))+1) %>%
+      mutate(range = "—") %>%
+      mutate(numbers = str_c(numbers, range)) %>%
+      mutate(letters = str_replace_all(letters, "—", ", ")) %>%
+      unite(indexes, letters, numbers, sep = "", remove = TRUE)
+    data <- data %>%
+      mutate(volume = ifelse(str_detect(data$volume, first_pattern), 
+                             str_replace(data$volume, first_pattern, 
+                                         first_pattern_indexes$indexes), 
+                             data$volume))
+  }
+  if(sum(str_detect(data$volume, second_pattern)) != 0){
+    second_pattern_indexes = as.data.frame(str_extract_all(
+      data$volume, second_pattern, simplify = TRUE))
+    colnames(second_pattern_indexes) = c("letters")
+    second_pattern_indexes = second_pattern_indexes %>%
+      mutate(numbers = str_extract_all(second_pattern_indexes$letters, "—\\d+", 
+                                       simplify = TRUE)) %>%
+      mutate(letters = str_replace_all(letters, "—", ", ")) %>%
+      unite(indexes, numbers, letters, sep = "", remove = TRUE)
+    data <- data %>%
+      mutate(volume = ifelse(str_detect(data$volume, second_pattern), 
+                             str_replace(data$volume, second_pattern, 
+                                         second_pattern_indexes$indexes), 
+                             data$volume))
   }
   return(data)
 }
 
-to_long_format <- function(data, authors=FALSE) {
-    out <- data %>%
-        separate_rows(volume, sep = "\\s*,\\s*")
-    if (authors) {
-        out <- out %>%
-            separate_rows(author, sep = "\\s*,\\s*")
-    } 
-    return(out)
+int_to_seq <- function(interval) {
+  ss <- str_split(interval, "—")[[1]]
+  return(paste(seq(ss[1], ss[2]), collapse=" "))
+}
+
+clean <- function(data, content) {
+  if(content == "illustrators"){
+    data <- data %>%
+      mutate(illustrator = str_replace_all(illustrator, "\\s+è\\s+", ", "))
+  }
+  if(content == "authors"){
+  comp.ed <- or(START %R% "Ñîñò ",
+                START %R% "Ñîñò. ",
+                START %R% "Ñîñò è îáðàá. ",
+                START %R% "Â îáðàáîòêå ")
+  data <- data %>% 
+    mutate(author = str_remove(author, comp.ed)) %>%
+    mutate(author = str_remove(author, "è îáðàá.\\s*")) %>%
+    mutate(author = str_remove(author, "\\s+è\\s+äð.")) %>%
+    mutate(author = str_replace_all(author, "\\s+è\\s+", ", "))
+  }
+  return(data)
+}
+
+prepare_data <- function(data, content) {
+  data <- data %>%
+    mutate(volume = gsubfn("\\d+—\\d+", int_to_seq, volume))
+  data <- clean(data, content=content)
+  return(data)
+}
+
+to_long_format <- function(data, content) {
+  out <- data %>%
+    separate_rows(volume, sep = "\\s")
+  if (content == "authors") {
+    out <- out %>%
+      separate_rows(author, sep = "\\s*,\\s*")
+  }
+  if (content == "illustrators"){
+    out <- out %>%
+      separate_rows(illustrator, sep = "\\s*,\\s*")
+  }
+  return(out)
 }
 
 filter_data <- function(data) {
-    data %>%
-        na.omit %>% 
-        group_by(volume) %>%
-        filter(n() < 3)
+  data %>%
+    na.omit %>% 
+    group_by(volume) %>%
+    filter(n() < 3) %>%
+    ungroup()
 }
 
-preprocess <- function(data, authors=FALSE) {
-    data %>%
-        prepare_data(authors=authors) %>%
-        to_long_format(authors=authors) %>%
-        filter_data
+preprocess <- function(data, composition) {
+  data %>%
+    correct_ranges %>%
+    check_for_letters %>%
+    prepare_data(composition) %>%
+    to_long_format(composition) %>%
+    filter_data
 }
-    
-vol_list <- function(intervals.data, content, period) {
-  if(content == "authors"){
-    intervals.data <- intervals.data %>% 
-      pivot_longer(c("Author 1", "Author 2", "Author 3"), 'Author', 4) %>%
-      na.omit()
-    colnames(intervals.data) <- c("Work", "Status", "Author")
-    intervals.data <- intervals.data %>%
-      select(Author, Work)
-    v3 <- sprintf("Work %s", 1:max(str_count(intervals.data$Work, pattern = " ")+1))
-    intervals.data <- separate(intervals.data, Work, into = v3, sep = " ")
-    list <- intervals.data %>%
-      pivot_longer(!Author, names_to = "Work", values_to = "Index")
-  }
-  if(content == "illustrators"){
-    list <- intervals.data %>%
-      pivot_longer(!illustrator, names_to = "Work", values_to = "Index")
-    colnames(list) <- c("Illustrator", "Work", "Index")
-  }
-  list <- na.omit(list)
-  occurrences <- list %>%
-    count(Index) %>%
-    filter(n < 3)
-  list <- list %>%
-    filter(Index %in% occurrences$Index)
-  list <- list %>%
-    select(-Work)
-  options(scipen = 100)
-  write.csv(list, paste(period, content, "vol_list.csv", sep = "_"), row.names = FALSE)
-  return(list)
-}
-
-
-
 
 edge.list <- function(authors.list, illus.list, period) {
   proto.edge.list <- authors.list %>%
-    inner_join(illus.list, by = "Index")
-  colnames(proto.edge.list) <- c("Author", "Index", "Illustrator")
+    inner_join(illus.list, by = "volume")
   edge.list <- proto.edge.list %>%
-    select(-Index)
-  write.csv(edge.list, paste(period, "edge_list.csv", sep = "_"))
+    select(author, illustrator)
+  write.csv(edge.list, paste(period, "edge_list.csv", sep = "_"), row.names = FALSE)
   return(edge.list)
 }
 
 incidence.mat <- function(edge.list) {
   inc.mat <- edge.list %>%
-    count(Author, Illustrator) %>%
-    cast_sparse(row = Author, column = Illustrator, value = n) %>%
-    as.matrix(inc.mat)
+    count(author, illustrator) %>%
+    cast_sparse(row = author, column = illustrator, value = n) %>%
+    as.matrix()
   return(inc.mat)
 }
 
@@ -121,13 +260,13 @@ adjacency.mat <- function(inc.mat, illustrators = FALSE) {
 
 attribute <- function(edge.list) {
   authors.attr <- edge.list %>%
-    select(Author) %>%
-    mutate(Status = "Author")
+    select(author) %>%
+    mutate(status = "Author")
   illus.attr <- edge.list %>%
-    select(Illustrator) %>%
-    mutate(Status = "Illustrator")
-  colnames(authors.attr) <- c('Artist', 'Status')
-  colnames(illus.attr) <- c('Artist', 'Status')
+    select(illustrator) %>%
+    mutate(status = "Illustrator")
+  colnames(authors.attr) <- c('artist', 'status')
+  colnames(illus.attr) <- c('artist', 'status')
     attr <- rbind(authors.attr, illus.attr)
     attr <- unique(attr)
     return(attr)
@@ -136,9 +275,9 @@ attribute <- function(edge.list) {
 network <- function(matrix, attribute, content) {
   if(content == "a-i"){
     net <- graph_from_incidence_matrix(matrix, directed = FALSE, weighted = TRUE, multiple = TRUE)
-    V(net)$Status <- attribute$Status
-    V(net)$color <- ifelse(V(net)$Status == "Author", "lightsteelblue3", "firebrick3")
-    V(net)$shape <- ifelse(V(net)$Status == "Illustrator", "square", "circle")
+    V(net)$status <- attribute$status
+    V(net)$color <- ifelse(V(net)$status == "Author", "lightsteelblue3", "firebrick3")
+    V(net)$shape <- ifelse(V(net)$status == "Illustrator", "square", "circle")
   }
   if(content == "a-a"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
@@ -160,7 +299,7 @@ measure <- function(net, bimodal=FALSE, content, period, filename) {
                        Closeness = closeness(net))
   if(bimodal){
     metrics <- metrics %>%
-      mutate(Status = V(net)$Status)
+      mutate(status = V(net)$status)
   }
   options(scipen=100)
   write.csv(metrics, paste(period, content, filename, sep = "_"), row.names = FALSE)
@@ -170,13 +309,16 @@ measure <- function(net, bimodal=FALSE, content, period, filename) {
 visualize <- function(net, content, period, filename) {
   png(paste(period, content, filename), width = 2000, height = 2000)
   if(content == "general"){
-    plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight)
+    plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight, vertex.label.color="grey",
+                vertex.label.family="Georgia")
   }
   if(content == "communities"){
-    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label = NA)
+    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label = NA, vertex.label.color="grey", 
+         vertex.label.family="Georgia")
   }
   if(content == "single community"){
-    plot(net, vertex.size = 4, label.cex = graph.strength(net), edge.width = E(net)$weight)
+    plot(net, vertex.size = 4, label.cex = graph.strength(net), edge.width = E(net)$weight, vertex.label.color="grey", 
+         vertex.label.family="Georgia")
   }
   dev.off()
 }
@@ -217,10 +359,10 @@ parser <- add_option(parser, c("-y", "--years"),
 args <- parse_args(parser)
 
 main <- function(args) {
-    illus.list <- read_tsv(args$inillus, col_names = c("illustrator", "volume")) %>%
-        preprocess
-    authors.list <- read_tsv(args$inauthors, col_names = c("author", "volume")) %>%
-        preprocess(authors=TRUE)
+    illus.list <- read_tsv(args$inillus, col_names = c("illustrator", "volume"))
+    illus.list <- preprocess(illus.list, "illustrators")
+    authors.list <- read_tsv(args$inauthors, col_names = c("author", "volume"))
+    authors.list <- preprocess(authors.list, "authors")
     setwd(args$outdir)
   el <- edge.list(authors.list, illus.list, args$years)
   inc.mat <- incidence.mat(el)

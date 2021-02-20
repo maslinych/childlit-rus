@@ -363,9 +363,9 @@ lines are joined to the previous numbered line, until the next tem in
 a sequence is encountered. When an expected next item is missing, a
 'MISSING' tag is printed in the output CSV file.""")
     parser.add_argument('infile', nargs='?', help='Input file (txt)',
-                        type=argparse.FileType('r'), default=sys.stdin)
+                        type=argparse.FileType('r', encoding='UTF-8'), default=sys.stdin)
     parser.add_argument('outfile', nargs='?', help='Output file (csv)',
-                        type=argparse.FileType('w'), default=sys.stdout)
+                        type=argparse.FileType('w', encoding='UTF-8'), default=sys.stdout)
     parser.add_argument('-v', '--verbose', help='Show regex debugging output',
                         action='store_true')
     return parser.parse_args()
