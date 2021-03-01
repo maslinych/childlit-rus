@@ -10,16 +10,16 @@ library(tidytext)
 
 correct_ranges = function(data) {
   data = data %>% 
-    mutate(volume = str_replace_all(volume, "(?<=\\d{1,4})-(?=[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ])", "")) %>%
-    mutate(volume = str_replace_all(volume, "(\\s*—-?\\s*|(?<=\\d{1,4})-(?=\\d{1,4}))", "—")) %>%
+    mutate(volume = str_replace_all(volume, "(?<=\\d{1,4})-(?=[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ])", "")) %>%
+    mutate(volume = str_replace_all(volume, "(\\s*вЂ”-?\\s*|(?<=\\d{1,4})-(?=\\d{1,4}))", "вЂ”")) %>%
     mutate(volume = str_replace_all(volume, "[/.?*,\\-']", " ")) %>%
     mutate(volume = str_squish(volume))
-  first_pattern_ranges = "(?<!\\d)\\d{3}[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?—\\d{2}(?!\\d)[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?"
-  second_pattern_ranges = "(?<!\\d)\\d{4}[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?—\\d{2}(?!\\d)[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?"
-  third_pattern_ranges = "(?<!\\d)\\d{4}[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?—\\d{1}(?!\\d)[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?"
-  fourth_pattern_ranges = "(?<!\\d)\\d{3}[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?—\\d{1}(?!\\d)[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?"
-  fifth_pattern_ranges = "(?<!\\d)\\d{2}[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?—\\d{1}(?!\\d)[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?"
-  sixth_pattern_ranges = "(?<!\\d)\\d{4}[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?—\\d{3}(?!\\d)[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]?"
+  first_pattern_ranges = "(?<!\\d)\\d{3}[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?вЂ”\\d{2}(?!\\d)[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?"
+  second_pattern_ranges = "(?<!\\d)\\d{4}[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?вЂ”\\d{2}(?!\\d)[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?"
+  third_pattern_ranges = "(?<!\\d)\\d{4}[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?вЂ”\\d{1}(?!\\d)[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?"
+  fourth_pattern_ranges = "(?<!\\d)\\d{3}[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?вЂ”\\d{1}(?!\\d)[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?"
+  fifth_pattern_ranges = "(?<!\\d)\\d{2}[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?вЂ”\\d{1}(?!\\d)[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?"
+  sixth_pattern_ranges = "(?<!\\d)\\d{4}[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?вЂ”\\d{3}(?!\\d)[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]?"
   #patterns_ranges = c(first_pattern_ranges, second_pattern_ranges, third_pattern_ranges, fourth_pattern_ranges, 
   #                    fifth_pattern_ranges, sixth_pattern_ranges)
   #addition_patterns = c('^\\d', '^\\d{2}', '^\\d{3}', '^\\d{2}', '^\\d{1}', '^\\d{1}')
@@ -28,13 +28,13 @@ correct_ranges = function(data) {
     ranges = str_extract_all(data$volume, first_pattern_ranges, simplify = TRUE)
     for(i in 1:ncol(ranges)){
       col_range = ranges[,i]
-      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = as.data.frame(str_split(col_range, "вЂ”", n = 2, simplify = TRUE))
       col_range = col_range %>%
         mutate(omitted_number = str_extract(col_range$V1, '^\\d')) %>%
         mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
         select(-omitted_number) %>%
-        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
-        mutate(range = ifelse(range == "—NA", "", range))
+        unite(range, V1, V2, sep = "вЂ”", remove = TRUE) %>%
+        mutate(range = ifelse(range == "вЂ”NA", "", range))
       data = data %>%
         mutate(volume = ifelse(str_detect(volume, first_pattern_ranges), str_replace(volume, 
                                                                                      first_pattern_ranges, 
@@ -45,13 +45,13 @@ correct_ranges = function(data) {
     ranges = str_extract_all(data$volume, second_pattern_ranges, simplify = TRUE)
     for(i in 1:ncol(ranges)){
       col_range = ranges[,i]
-      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = as.data.frame(str_split(col_range, "вЂ”", n = 2, simplify = TRUE))
       col_range = col_range %>%
         mutate(omitted_number = str_extract(col_range$V1, '^\\d{2}')) %>%
         mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
         select(-omitted_number) %>%
-        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
-        mutate(range = ifelse(range == "—NA", "", range))
+        unite(range, V1, V2, sep = "вЂ”", remove = TRUE) %>%
+        mutate(range = ifelse(range == "вЂ”NA", "", range))
       data = data %>%
         mutate(volume = ifelse(str_detect(volume, second_pattern_ranges), str_replace(volume, 
                                                                                      second_pattern_ranges, 
@@ -62,13 +62,13 @@ correct_ranges = function(data) {
     ranges = str_extract_all(data$volume, third_pattern_ranges, simplify = TRUE)
     for(i in 1:ncol(ranges)){
       col_range = ranges[,i]
-      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = as.data.frame(str_split(col_range, "вЂ”", n = 2, simplify = TRUE))
       col_range = col_range %>%
         mutate(omitted_number = str_extract(col_range$V1, '^\\d{3}')) %>%
         mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
         select(-omitted_number) %>%
-        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
-        mutate(range = ifelse(range == "—NA", "", range))
+        unite(range, V1, V2, sep = "вЂ”", remove = TRUE) %>%
+        mutate(range = ifelse(range == "вЂ”NA", "", range))
       data = data %>%
         mutate(volume = ifelse(str_detect(volume, third_pattern_ranges), str_replace(volume, 
                                                                                       third_pattern_ranges, 
@@ -79,13 +79,13 @@ correct_ranges = function(data) {
     ranges = str_extract_all(data$volume, fourth_pattern_ranges, simplify = TRUE)
     for(i in 1:ncol(ranges)){
       col_range = ranges[,i]
-      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = as.data.frame(str_split(col_range, "вЂ”", n = 2, simplify = TRUE))
       col_range = col_range %>%
         mutate(omitted_number = str_extract(col_range$V1, '^\\d{2}')) %>%
         mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
         select(-omitted_number) %>%
-        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
-        mutate(range = ifelse(range == "—NA", "", range))
+        unite(range, V1, V2, sep = "вЂ”", remove = TRUE) %>%
+        mutate(range = ifelse(range == "вЂ”NA", "", range))
       data = data %>%
         mutate(volume = ifelse(str_detect(volume, fourth_pattern_ranges), str_replace(volume, 
                                                                                      fourth_pattern_ranges, 
@@ -96,13 +96,13 @@ correct_ranges = function(data) {
     ranges = str_extract_all(data$volume, fifth_pattern_ranges, simplify = TRUE)
     for(i in 1:ncol(ranges)){
       col_range = ranges[,i]
-      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = as.data.frame(str_split(col_range, "вЂ”", n = 2, simplify = TRUE))
       col_range = col_range %>%
         mutate(omitted_number = str_extract(col_range$V1, '^\\d{1}')) %>%
         mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
         select(-omitted_number) %>%
-        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
-        mutate(range = ifelse(range == "—NA", "", range))
+        unite(range, V1, V2, sep = "вЂ”", remove = TRUE) %>%
+        mutate(range = ifelse(range == "вЂ”NA", "", range))
       data = data %>%
         mutate(volume = ifelse(str_detect(volume, fifth_pattern_ranges), str_replace(volume, 
                                                                                       fifth_pattern_ranges, 
@@ -113,13 +113,13 @@ correct_ranges = function(data) {
     ranges = str_extract_all(data$volume, sixth_pattern_ranges, simplify = TRUE)
     for(i in 1:ncol(ranges)){
       col_range = ranges[,i]
-      col_range = as.data.frame(str_split(col_range, "—", n = 2, simplify = TRUE))
+      col_range = as.data.frame(str_split(col_range, "вЂ”", n = 2, simplify = TRUE))
       col_range = col_range %>%
         mutate(omitted_number = str_extract(col_range$V1, '^\\d{1}')) %>%
         mutate(V2 = str_c(omitted_number, V2, sep = "")) %>%
         select(-omitted_number) %>%
-        unite(range, V1, V2, sep = "—", remove = TRUE) %>%
-        mutate(range = ifelse(range == "—NA", "", range))
+        unite(range, V1, V2, sep = "вЂ”", remove = TRUE) %>%
+        mutate(range = ifelse(range == "вЂ”NA", "", range))
       data = data %>%
         mutate(volume = ifelse(str_detect(volume, sixth_pattern_ranges), str_replace(volume, 
                                                                                      sixth_pattern_ranges, 
@@ -131,21 +131,21 @@ correct_ranges = function(data) {
 }
 
 check_for_letters <- function(data) {
-  first_pattern <- "\\d+[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]—"
-  second_pattern <- "—\\d+[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]"
+  first_pattern <- "\\d+[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]вЂ”"
+  second_pattern <- "вЂ”\\d+[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]"
   if(sum(str_detect(data$volume, first_pattern)) != 0){
     first_pattern_indexes <- as.data.frame(str_extract_all(
       data$volume, first_pattern, simplify = TRUE))
     colnames(first_pattern_indexes) <- c("letters")
     first_pattern_indexes <- first_pattern_indexes %>%
       mutate(numbers = str_replace_all(first_pattern_indexes$letters, 
-                                       "[абвгдеёжзийклмнопрстуфхцчшщэюяыьъ]", 
+                                       "[Р°Р±РІРіРґРµС‘Р¶Р·РёР№РєР»РјРЅРѕРїСЂСЃС‚СѓС„С…С†С‡С€С‰СЌСЋСЏС‹СЊСЉ]", 
                                        "")) %>%
-      mutate(numbers = str_replace(numbers, "—", "")) %>%
+      mutate(numbers = str_replace(numbers, "вЂ”", "")) %>%
       mutate(numbers = as.numeric(as.character(numbers))+1) %>%
-      mutate(range = "—") %>%
+      mutate(range = "вЂ”") %>%
       mutate(numbers = str_c(numbers, range)) %>%
-      mutate(letters = str_replace_all(letters, "—", ", ")) %>%
+      mutate(letters = str_replace_all(letters, "вЂ”", ", ")) %>%
       unite(indexes, letters, numbers, sep = "", remove = TRUE)
     data <- data %>%
       mutate(volume = ifelse(str_detect(data$volume, first_pattern), 
@@ -158,9 +158,9 @@ check_for_letters <- function(data) {
       data$volume, second_pattern, simplify = TRUE))
     colnames(second_pattern_indexes) = c("letters")
     second_pattern_indexes = second_pattern_indexes %>%
-      mutate(numbers = str_extract_all(second_pattern_indexes$letters, "—\\d+", 
+      mutate(numbers = str_extract_all(second_pattern_indexes$letters, "вЂ”\\d+", 
                                        simplify = TRUE)) %>%
-      mutate(letters = str_replace_all(letters, "—", ", ")) %>%
+      mutate(letters = str_replace_all(letters, "вЂ”", ", ")) %>%
       unite(indexes, numbers, letters, sep = "", remove = TRUE)
     data <- data %>%
       mutate(volume = ifelse(str_detect(data$volume, second_pattern), 
@@ -172,32 +172,32 @@ check_for_letters <- function(data) {
 }
 
 int_to_seq <- function(interval) {
-  ss <- str_split(interval, "—")[[1]]
+  ss <- str_split(interval, "вЂ”")[[1]]
   return(paste(seq(ss[1], ss[2]), collapse=" "))
 }
 
 clean <- function(data, content) {
   if(content == "illustrators"){
     data <- data %>%
-      mutate(illustrator = str_replace_all(illustrator, "\\s+и\\s+", ", "))
+      mutate(illustrator = str_replace_all(illustrator, "\\s+Рё\\s+", ", "))
   }
   if(content == "authors"){
-  comp.ed <- or(START %R% "Сост ",
-                START %R% "Сост. ",
-                START %R% "Сост и обраб. ",
-                START %R% "В обработке ")
+  comp.ed <- or(START %R% "РЎРѕСЃС‚ ",
+                START %R% "РЎРѕСЃС‚. ",
+                START %R% "РЎРѕСЃС‚ Рё РѕР±СЂР°Р±. ",
+                START %R% "Р’ РѕР±СЂР°Р±РѕС‚РєРµ ")
   data <- data %>% 
     mutate(author = str_remove(author, comp.ed)) %>%
-    mutate(author = str_remove(author, "и обраб.\\s*")) %>%
-    mutate(author = str_remove(author, "\\s+и\\s+др.")) %>%
-    mutate(author = str_replace_all(author, "\\s+и\\s+", ", "))
+    mutate(author = str_remove(author, "Рё РѕР±СЂР°Р±.\\s*")) %>%
+    mutate(author = str_remove(author, "\\s+Рё\\s+РґСЂ.")) %>%
+    mutate(author = str_replace_all(author, "\\s+Рё\\s+", ", "))
   }
   return(data)
 }
 
 prepare_data <- function(data, content) {
   data <- data %>%
-    mutate(volume = gsubfn("\\d+—\\d+", int_to_seq, volume))
+    mutate(volume = gsubfn("\\d+вЂ”\\d+", int_to_seq, volume))
   data <- clean(data, content=content)
   return(data)
 }
@@ -278,16 +278,19 @@ network <- function(matrix, attribute, content) {
     V(net)$status <- attribute$status
     V(net)$color <- ifelse(V(net)$status == "Author", "lightsteelblue3", "firebrick3")
     V(net)$shape <- ifelse(V(net)$status == "Illustrator", "square", "circle")
+    V(net)$label_color <- ifelse(V(net)$status == "Author", "grey", "darkgreen")
   }
   if(content == "a-a"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
     V(net)$color <- "lightsteelblue3"
     V(net)$shape <- 'circle'
+    V(net)$label_color <- "grey"
   }
   if(content == "i-i"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
     V(net)$color <- "firebrick3"
     V(net)$shape <- 'square'
+    V(net)$label_color <- "darkgreen"
   }
   return(net)
 }
@@ -309,16 +312,14 @@ measure <- function(net, bimodal=FALSE, content, period, filename) {
 visualize <- function(net, content, period, filename) {
   png(paste(period, content, filename), width = 2000, height = 2000)
   if(content == "general"){
-    plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight, vertex.label.color="grey",
-                vertex.label.family="Georgia")
+    plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight)
   }
   if(content == "communities"){
-    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label = NA, vertex.label.color="grey", 
-         vertex.label.family="Georgia")
+    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label = NA)
   }
   if(content == "single community"){
-    plot(net, vertex.size = 4, label.cex = graph.strength(net), edge.width = E(net)$weight, vertex.label.color="grey", 
-         vertex.label.family="Georgia")
+    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label.color=V(net)$label_color, vertex.label.family="Georgia", 
+         vertex.label.cex = log(graph.strength(net)))
   }
   dev.off()
 }
@@ -370,11 +371,9 @@ main <- function(args) {
   adj.mat.i <- adjacency.mat(inc.mat, TRUE)
   attr <- attribute(el)
   net <- network(inc.mat, attr, "a-i")
-  print(paste("The density of a general graph is:", graph.density(net, loops = TRUE), sep = " "))
   net.i <- network(adj.mat.i, content = "i-i")
-  print(paste("The density of an illustrators graph is:", graph.density(net.i, loops = TRUE), sep = " "))
   net.a <- network(adj.mat.a, content = "a-a")
-  print(paste("The density of an authors graph is:", graph.density(net.a, loops = TRUE), sep = " "))
+  write.csv(data.frame(general = graph.density(net, loops = FALSE), illustrators = graph.density(net.i, loops = FALSE), authors = graph.density(net.a, loops = FALSE)), paste(period, "density.csv", sep = "_"))
   metrics <- measure(net, TRUE, "general", args$years, ".csv")
   visualize(net <- net, "general", args$years, ".png")
   net.c <- com.detect(net, "general", args$years)
