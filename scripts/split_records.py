@@ -6,17 +6,18 @@ import csv
 import argparse
 import sys
 from collections import OrderedDict
+from string import Formatter
 
 AUTHOR_NAME = r"""
 (?!Герой\sСоветского\s+Союза)
 (?<last>           # Фамилия:
-([Дд]['’]|[Дд]е[ -])?([Лл]а\s+)?\p{Lu}\p{Ll}+      # Воронцов / д'Амичис де(-)?
-(-\p{Lu}\p{Ll}+|   # Воронцов-Вельяминов
+([Дд]['’]|[Дд]е[ -])?([Лл]а\s+)?\p{Lu}(\p{Ll}+|\p{Lu}+)      # Воронцов / д'Амичис де(-)?
+(-\p{Lu}(\p{Ll}+|p{Lu}+)|   # Воронцов-Вельяминов
 -(отец|старший|заде|зода|оол|улы)|   # Дюма-отец Сарыг-оол
 \s+\p{Lu}\p{Ll}+(?=,))?# Сервантес Сааведра, Мигель 
 )
 (\s+\((?<real>     # расшифровка псевдонима:
-\p{Lu}\p{Ll}+)\))? #  Петров (Бирюк)
+\p{Lu}(\p{Ll}+|p{Lu}+))\))? #  Петров (Бирюк)
 (  # альтернатива — без запятой:
 \s+(?<ini>                                                  # инициалы или имена:
 \p{Lu}\p{Ll}{0,2}\.[\s-]?\p{Lu}\p{Ll}{0,2}\.([\s-]\p{Lu}\.)?  # Дм. Ив.; Г.-Х. (-A.)?
@@ -24,7 +25,7 @@ AUTHOR_NAME = r"""
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{3,}(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+)) # Иван Ильич
 |\p{Lu}\p{Ll}+-(Булат|бао|ф[эе]й|и|мин|Фу|Ю|хуа|цзин?|линь|юй|нань|чжень|ян|заде)  # Хас-Булат, Юй-бао и тп.
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{0,2}\.              # Фенимор Д.
-|\p{Lu}\p{Ll}{1,}(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+|\s+\(\p{Lu}+\p{Ll}*))) # Василий; Иоганн-Вольфганг; Шарль де
+|\p{Lu}(\p{Ll}+|p{Lu}+)(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+|\s+\(\p{Lu}+\p{Ll}*))) # Василий; Иоганн-Вольфганг; Шарль де
 |  # альтернатива — после запятой:
 ,\s+(?<ini>братья|\p{Lu}\p{Ll}+)(?=\.)                          # Гримм, братья
 )(\s+
@@ -47,6 +48,7 @@ SINGLE_AUTHORS = r"""
 Aaсамурти|
 Айбек|
 Алтан-Хайша|
+Алтыншаш|
 Анко|
 Антониорроблес|
 Аригапуди|
@@ -91,6 +93,34 @@ Aaсамурти|
 д’Актиль|
 д’Эрвильи
 """
+
+
+class ExtendedFormatter(Formatter):
+    """An extended format string formatter
+
+    Formatter with extended conversion symbol
+    """
+    def convert_field(self, value, conversion):
+        """ Extend conversion symbol
+        Following additional symbol has been added
+        * c: convert to string and capitalize
+
+        default are:
+        * s: convert with str()
+        * r: convert with repr()
+        * a: convert with ascii()
+        """
+
+        if conversion == "c":
+            if re.search(r"[-'’ ]", str(value)):
+                if str(value).isupper():
+                    return ''.join(i.capitalize() for i in re.split(r"([-'’ ])", str(value)))
+                else:
+                    return str(value)
+            else:
+                return str(value).capitalize()
+        # Do the default conversion or raise error if no matching conversion found
+        return super(ExtendedFormatter, self).convert_field(value, conversion)
 
 
 class BibItem(object):
@@ -259,24 +289,26 @@ attribute and start and end line numbers)
 
 def format_multi_authors(authors):
     out = []
+    fmtr = ExtendedFormatter()
     if not authors.endswith('.'):
         authors = authors + '.'
     for author in re.finditer(AUTHOR_NAME, authors, re.U | re.VERBOSE):
         if author.group('real'):
-            out.append("{last}, {ini} [{real}]".format(**author.groupdict()))
+            out.append(fmtr.format("{last!c}, {ini} [{real}]", **author.groupdict()))
         else:
-            out.append("{last}, {ini}".format(**author.groupdict()))
+            out.append(fmtr.format("{last!c}, {ini}", **author.groupdict()))
     return "; ".join(out)
 
 
 def format_other_authors(others):
     others = others.strip(' ;.,')
     out = []
+    fmtr = ExtendedFormatter()
     ini_author = re.compile(INI_AUTHOR, re.U | re.VERBOSE)
     for author in re.split(r'[,;]\s+', others):
         try:
             m = ini_author.match(author)
-            out.append("{last}, {ini}".format(**m.groupdict()))
+            out.append(fmtr.format("{last!c}, {ini}", **m.groupdict()))
         except AttributeError:
             raise ValueError("Unrecognized author in the others list: %s" % author)
     return "; ".join(out)
@@ -287,6 +319,7 @@ def extract_author(rec, prev=None, verbose=False):
 or indicate that it is missing with the NOAUTHOR tag. Inconsistencies
 are marked with ERRAUTHOR tag.
     """
+    fmtr = ExtendedFormatter()   
     one_author = re.compile(AUTHOR_NAME + r"([[\W\s]--[,«]]+|\s+@[[\W\s]--[«]]+)(?<tail>.*)$", re.U | re.VERBOSE | re.V1)
     dash = re.compile(r"^[\W\s]*[—][\W\s]*(?<tail>.*)$", re.U)
     multi_author = re.compile(r'(?<all>' + AUTHOR_NAME +
@@ -315,7 +348,7 @@ are marked with ERRAUTHOR tag.
     elif hasothers:
         if verbose:
             print("hasothers:", hasothers.groupdict())     
-        rec['author'] = "{last}, {ini}; OTHERS".format(**hasothers.groupdict())
+        rec['author'] = fmtr.format("{last!c}, {ini}; OTHERS", **hasothers.groupdict())
         rec.tail = hasothers.group('tail')
         if hasothers.group('others'):
             others = format_other_authors(hasothers.group('others'))
@@ -324,7 +357,7 @@ are marked with ERRAUTHOR tag.
     elif hasone:
         if verbose:
             print("hasone:", hasone.groupdict())
-        rec['author'] = "{last}, {ini}".format(**hasone.groupdict())
+        rec['author'] = fmtr.format("{last!c}, {ini}", **hasone.groupdict())
         if hasone.group('real'):
             rec['author'] = "{0} [{1}]".format(rec['author'], hasone.group('real'))
         rec.tail = hasone.group('tail')
@@ -337,7 +370,11 @@ are marked with ERRAUTHOR tag.
             rec['author'] = prev
         rec.tail = hasdash.group('tail')
     elif hassingle:
-        rec['author'] = hassingle.group('last')
+        if hassingle.group('last').isupper():
+            autr = hassingle.group('last').capitalize()
+        else:
+            autr = hassingle.group('last')
+        rec['author'] = autr
         rec.tail = hassingle.group('tail')
     elif hasnoauthor:
         rec['author'] = "NOAUTHOR"
