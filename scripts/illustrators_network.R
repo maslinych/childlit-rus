@@ -293,7 +293,7 @@ network <- function(matrix, attribute, content) {
 }
 
 measure <- function(net, bimodal=FALSE, content, period, filename) {
-  metrics <- data.frame(Name = V(net)$name, 
+  metrics <- data.frame(period = period, Name = V(net)$name, 
                        Degree = graph.strength(net), 
                        Betweeness = betweenness(net),
                        Closeness = closeness(net))
