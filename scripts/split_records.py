@@ -414,19 +414,49 @@ are marked with ERRAUTHOR tag.
     return rec
 
 
+def format_multi_cities(cities):
+    out = []
+    for city in re.finditer(CITY, cities, re.U | re.VERBOSE):
+        out.append(city.group(0))
+    return "; ".join(out)
+
+
 def extract_title(rec, prev=None, verbose=False):
-    break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d].+)\.\s+(?<colophon>(' + CITY + r')(\s?[—;]\s?(' + CITY + r')){0,4}[,].*?\s+19[2-8][0-9])\.\s*(?<tail>.*)$',
-                               re.U | re.VERBOSE )
+    break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d«(].+?[,.)?!—-])\s*(?<city>('
+               + CITY + r')(\s?(;|—-?)\s?(' + CITY +
+               r')){0,4})[.,:](?<publisher>.*?)\s+(?<year>19[1-8][0-9])[\p{P}\s](\s*—\s*)?(?<tail>.*)$',
+               re.U | re.VERBOSE )
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*\.)(\s*—\s*)?(?<year>19[1-8][0-9])?(?<tail>.*)$', re.U | re.VERBOSE)
     hascity = break_at_city.match(rec.tail)
-    if hascity:
+    is_the_same = the_same.match(rec.tail)
+    if is_the_same:
+        rec['title'] = prev['title']
+        if hascity:
+            rec['city'] = format_multi_cities(hascity.group('city'))
+            rec['publisher'] = hascity.group('publisher').strip(' .,')
+            rec['year'] = hascity.group('year')
+            rec.tail = hascity.group('tail')
+        else:
+            rec['city'] = prev['city']
+            rec['publisher'] = prev['publisher']
+            if is_the_same.group('year'):
+                rec['year'] = is_the_same.group('year')
+            else:
+                rec['year'] = prev['year']
+            rec.tail = is_the_same.group('tail')
+    elif hascity:
         if verbose:
             print("hascity:", hascity.groupdict())
-        rec['title'] = hascity.group('alltitle')
-        rec['colophon'] = hascity.group('colophon')
+        rec['title'] = hascity.group('alltitle').strip(' ,.—-')
+        rec['city'] = format_multi_cities(hascity.group('city'))
+        rec['publisher'] = hascity.group('publisher').strip(' .,')
+        rec['year'] = hascity.group('year')
         rec.tail = hascity.group('tail')
     else:
         rec['title'] = "NOTITLE"
-        rec['colophon'] = "NOPLACE"
+        rec['city'] = ''
+        rec['publisher'] = ''
+        rec['year'] = ''
     return rec
 
 
@@ -450,12 +480,12 @@ def main():
     args = parse_arguments()
     csv_writer = csv.writer(args.outfile)
     author = None
-    title = None
+    titlerec = None
     for rec in iter_records(numbered_lines(args.infile)):
         row = extract_author(rec, author, verbose=args.verbose)
         author = row['author']
-        row = extract_title(row, title, verbose=args.verbose)
-        title = row['title']
+        row = extract_title(row, titlerec, verbose=args.verbose)
+        titlerec = row
         csv_writer.writerow(row.serialize())
 
 
