@@ -94,6 +94,33 @@ Aaсамурти|
 д’Эрвильи
 """
 
+CITY = r"""
+Алма-Ата|
+Архангельск|
+Астрахань|
+Бобруйск|
+Воронеж|
+Горький|
+Киев|
+Курск|
+Л\.|
+Ленинград|
+М\.|
+Москва|
+Новосибирск|
+Пг?\.|
+Пенза|
+Ростов-Дон|
+Ростов-на-Дону|
+Рязань|
+Саратов|
+Симферополь|
+Смоленск|
+Сталинград|
+Ташкент|
+Харьков
+"""
+
 
 class ExtendedFormatter(Formatter):
     """An extended format string formatter
@@ -387,12 +414,22 @@ are marked with ERRAUTHOR tag.
     return rec
 
 
-# def extract_title(row):
-#     head = row[:-1]
-#     tail = row[-1]
-#     re.compile(r'')
-    
-    
+def extract_title(rec, prev=None, verbose=False):
+    break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d].+)\.\s+(?<colophon>(' + CITY + r')(\s?[—;]\s?(' + CITY + r')){0,4}[,].*?\s+19[2-8][0-9])\.\s*(?<tail>.*)$',
+                               re.U | re.VERBOSE )
+    hascity = break_at_city.match(rec.tail)
+    if hascity:
+        if verbose:
+            print("hascity:", hascity.groupdict())
+        rec['title'] = hascity.group('alltitle')
+        rec['colophon'] = hascity.group('colophon')
+        rec.tail = hascity.group('tail')
+    else:
+        rec['title'] = "NOTITLE"
+        rec['colophon'] = "NOPLACE"
+    return rec
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
@@ -413,9 +450,12 @@ def main():
     args = parse_arguments()
     csv_writer = csv.writer(args.outfile)
     author = None
+    title = None
     for rec in iter_records(numbered_lines(args.infile)):
         row = extract_author(rec, author, verbose=args.verbose)
         author = row['author']
+        row = extract_title(row, title, verbose=args.verbose)
+        title = row['title']
         csv_writer.writerow(row.serialize())
 
 
