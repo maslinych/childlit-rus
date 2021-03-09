@@ -5,7 +5,6 @@ import regex as re
 import csv
 import argparse
 import sys
-from collections import OrderedDict
 from string import Formatter
 
 AUTHOR_NAME = r"""
@@ -280,20 +279,21 @@ class BibItem(object):
             return self.num + self.suffix - other.num - other.suffix
 
 
-class Record(OrderedDict):
+class Record(dict):
     def __init__(self, tail='', start=0, end=0):
         super(Record, self).__init__()
         self.tail = tail
         self.start = start
         self.end = end
+        self.fields = ['start', 'end', 'num', 'author', 'title',
+                       'city', 'publisher', 'year', 'tail']
 
     def serialize(self):
-        out = []
-        out.append(self.start)
-        out.append(self.end)
-        for k, v in self.items():
-            out.append(str(v))
-        out.append(self.tail)
+        out = {}
+        out['start'] = self.start
+        out['end'] = self.end
+        out['tail'] = self.tail
+        out.update(self)
         return out
 
 
@@ -547,9 +547,10 @@ a sequence is encountered. When an expected next item is missing, a
 def main():
     """main processing"""
     args = parse_arguments()
-    csv_writer = csv.writer(args.outfile)
+    csv_writer = csv.DictWriter(args.outfile, fieldnames = Record().fields)
     author = None
     titlerec = None
+    csv_writer.writeheader()
     for rec in iter_records(numbered_lines(args.infile)):
         row = extract_author(rec, author, verbose=args.verbose)
         author = row['author']
