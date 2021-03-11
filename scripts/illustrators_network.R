@@ -278,19 +278,19 @@ network <- function(matrix, attribute, content) {
     V(net)$status <- attribute$status
     V(net)$color <- ifelse(V(net)$status == "Author", "lightsteelblue3", "firebrick3")
     V(net)$shape <- ifelse(V(net)$status == "Illustrator", "square", "circle")
-    V(net)$label_color <- ifelse(V(net)$status == "Author", "grey", "darkgreen")
+    V(net)$label_color <- ifelse(V(net)$status == "Author", "darkred", "black")
   }
   if(content == "a-a"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
     V(net)$color <- "lightsteelblue3"
     V(net)$shape <- 'circle'
-    V(net)$label_color <- "grey"
+    V(net)$label_color <- "darkred"
   }
   if(content == "i-i"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
     V(net)$color <- "firebrick3"
     V(net)$shape <- 'square'
-    V(net)$label_color <- "darkgreen"
+    V(net)$label_color <- "black"
   }
   return(net)
 }
@@ -336,7 +336,7 @@ com.detect <- function(net, content, period) {
   colnames(nodes) <- c("Community", "Members")
   net.c <- delete.vertices(net, !V(net)$community %in% nodes$Community)
   for(i in unique(V(net.c)$community)){
-    V(net.c)[V(net.c)$community == i]$color <- rainbow(max(unique(V(net.c)$community)), v = 0.75)[i]
+    V(net.c)[V(net.c)$community == i]$color <- rainbow(max(unique(V(net.c)$community)), v = 0.55, alpha = 0.4)[i]
   }
   membership <- data.frame(Name = as.vector(V(net.c)$name), Community = as.vector(V(net.c)$community))
   write.csv(membership, paste(period, content, "metrics.csv", sep = "_"))
