@@ -373,7 +373,7 @@ main <- function(args) {
   net <- network(inc.mat, attr, "a-i")
   net.i <- network(adj.mat.i, content = "i-i")
   net.a <- network(adj.mat.a, content = "a-a")
-  write.csv(data.frame(general = graph.density(net, loops = FALSE), illustrators = graph.density(net.i, loops = FALSE), authors = graph.density(net.a, loops = FALSE)), paste(period, "density.csv", sep = "_"))
+  write.csv(data.frame(general = graph.density(net, loops = FALSE), illustrators = graph.density(net.i, loops = FALSE), authors = graph.density(net.a, loops = FALSE)), paste(args$years, "density.csv", sep = "_"))
   metrics <- measure(net, TRUE, "general", args$years, ".csv")
   visualize(net <- net, "general", args$years, ".png")
   net.c <- com.detect(net, "general", args$years)
