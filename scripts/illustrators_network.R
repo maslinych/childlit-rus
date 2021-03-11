@@ -4,7 +4,7 @@ library(dplyr)
 library(stringr)
 library(rebus)
 library(igraph)
-library(optparse)
+library(optparse) 
 library(gsubfn)
 library(tidytext)
 
@@ -278,16 +278,19 @@ network <- function(matrix, attribute, content) {
     V(net)$status <- attribute$status
     V(net)$color <- ifelse(V(net)$status == "Author", "lightsteelblue3", "firebrick3")
     V(net)$shape <- ifelse(V(net)$status == "Illustrator", "square", "circle")
+    V(net)$label_color <- ifelse(V(net)$status == "Author", "grey", "darkgreen")
   }
   if(content == "a-a"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
     V(net)$color <- "lightsteelblue3"
     V(net)$shape <- 'circle'
+    V(net)$label_color <- "grey"
   }
   if(content == "i-i"){
     net <- graph_from_adjacency_matrix(matrix, diag = FALSE, mode = "undirected", weighted = TRUE)
     V(net)$color <- "firebrick3"
     V(net)$shape <- 'square'
+    V(net)$label_color <- "darkgreen"
   }
   return(net)
 }
@@ -309,16 +312,14 @@ measure <- function(net, bimodal=FALSE, content, period, filename) {
 visualize <- function(net, content, period, filename) {
   png(paste(period, content, filename), width = 2000, height = 2000)
   if(content == "general"){
-    plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight, vertex.label.color="grey",
-                vertex.label.family="Georgia")
+    plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight)
   }
   if(content == "communities"){
-    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label = NA, vertex.label.color="grey", 
-         vertex.label.family="Georgia")
+    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label = NA)
   }
   if(content == "single community"){
-    plot(net, vertex.size = 4, label.cex = graph.strength(net), edge.width = E(net)$weight, vertex.label.color="grey", 
-         vertex.label.family="Georgia")
+    plot(net, vertex.size = 4, edge.width = E(net)$weight, vertex.label.color=V(net)$label_color, vertex.label.family="Georgia", 
+         vertex.label.cex = log(graph.strength(net)))
   }
   dev.off()
 }
@@ -370,11 +371,9 @@ main <- function(args) {
   adj.mat.i <- adjacency.mat(inc.mat, TRUE)
   attr <- attribute(el)
   net <- network(inc.mat, attr, "a-i")
-  print(paste("The density of a general graph is:", graph.density(net, loops = TRUE), sep = " "))
   net.i <- network(adj.mat.i, content = "i-i")
-  print(paste("The density of an illustrators graph is:", graph.density(net.i, loops = TRUE), sep = " "))
   net.a <- network(adj.mat.a, content = "a-a")
-  print(paste("The density of an authors graph is:", graph.density(net.a, loops = TRUE), sep = " "))
+  write.csv(data.frame(general = graph.density(net, loops = FALSE), illustrators = graph.density(net.i, loops = FALSE), authors = graph.density(net.a, loops = FALSE)), paste(period, "density.csv", sep = "_"))
   metrics <- measure(net, TRUE, "general", args$years, ".csv")
   visualize(net <- net, "general", args$years, ".png")
   net.c <- com.detect(net, "general", args$years)
