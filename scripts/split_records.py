@@ -566,9 +566,11 @@ def extract_title(rec, prev=None, verbose=False):
     else:
         break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d«(].+?[,.)?!—-])\s*'
                    + INFO, re.U | re.VERBOSE )
-    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*\.)(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.)?(?<tail>.*)$', re.U | re.VERBOSE)
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.)?(?<tail>.*)$', re.U | re.VERBOSE)
+    ref = re.compile(r'(?<alltitle>.+)\s+См\.\s*(?<ref>[1-9][0-9]{0,4})\.$')
     hascity = break_at_city.match(rec.tail)
     is_the_same = the_same.match(rec.tail)
+    is_ref = ref.match(rec.tail)
     if is_the_same:
         the_same_hascity = break_at_city.match(is_the_same.group('tail').strip())
         rec['maintitle'] = prev['maintitle']
@@ -602,6 +604,13 @@ def extract_title(rec, prev=None, verbose=False):
         rec['publisher'] = hascity.group('publisher').strip(' .,')
         rec['year'] = hascity.group('year')
         rec.tail = hascity.group('tail')
+    elif is_ref:
+        rec['maintitle'] = is_ref.group('alltitle').strip(' ,.—-')
+        rec['ref'] = is_ref.group('ref')
+        rec['city'] = 'REF' + rec['ref']
+        rec['publisher'] = ''
+        rec['year'] = ''
+        rec.tail = ''
     else:
         rec['maintitle'] = "NOTITLE"
         rec['city'] = ''
