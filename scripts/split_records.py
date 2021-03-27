@@ -179,6 +179,7 @@ CITY = r"""
 Москва|
 Мурманск|
 Муром|
+Мытищи|
 Н\.-Новгород|
 Нальчик|
 Новгород|
@@ -558,20 +559,33 @@ def format_multi_cities(cities):
 
 
 def extract_title(rec, prev=None, verbose=False):
-    break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d«(].+?[,.)?!—-])\s*(?<city>('
-               + CITY + r')(\s?(;|—-?)\s?(' + CITY +
-               r')){0,4})[.,:](?<publisher>.*?)\s+(?<year>19[1-8][0-9])[\p{P}\s](\s*—\s*)?(?<tail>.*)$',
-               re.U | re.VERBOSE )
-    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*\.)(\s*—\s*)?(?<year>19[1-8][0-9])?(?<tail>.*)$', re.U | re.VERBOSE)
+    INFO = r'(?<city>(' + CITY + r')(\s?(;|—-?)\s?(' + CITY + r')){0,4})[.,:](?<publisher>.*?)\s+(?<year>19[1-8][0-9]|[Бб]\.\s+г\.|[Бб]/г\.?)[\p{P}\s](\s*—\s*)?(?<tail>.*)$'
+    if '@' in rec.tail:
+        break_at_city = re.compile(r'(?<alltitle>[^@]+\s+)@\s*' +
+                                   INFO, re.U | re.VERBOSE)
+    else:
+        break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d«(].+?[,.)?!—-])\s*'
+                   + INFO, re.U | re.VERBOSE )
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*\.)(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.)?(?<tail>.*)$', re.U | re.VERBOSE)
     hascity = break_at_city.match(rec.tail)
     is_the_same = the_same.match(rec.tail)
     if is_the_same:
-        rec['title'] = prev['title']
-        if hascity:
-            rec['city'] = format_multi_cities(hascity.group('city'))
-            rec['publisher'] = hascity.group('publisher').strip(' .,')
-            rec['year'] = hascity.group('year')
-            rec.tail = hascity.group('tail')
+        the_same_hascity = break_at_city.match(is_the_same.group('tail').strip())
+        rec['maintitle'] = prev['maintitle']
+        if hascity and is_the_same.group('alltitle') == hascity.group('alltitle'):
+            is_breakable = hascity
+        else:
+            is_breakable = the_same_hascity
+        if is_breakable:
+            rec['city'] = format_multi_cities(is_breakable.group('city'))
+            rec['publisher'] = is_breakable.group('publisher').strip(' .,')
+            rec['year'] = is_breakable.group('year')
+            try:
+                rec['titleaddon'] = the_same_hascity.group('alltitle')
+                rec['title'] = ' : '.join([rec['maintitle'], rec['titleaddon']])
+            except AttributeError:
+                pass
+            rec.tail = is_breakable.group('tail')
         else:
             rec['city'] = prev['city']
             rec['publisher'] = prev['publisher']
@@ -583,16 +597,18 @@ def extract_title(rec, prev=None, verbose=False):
     elif hascity:
         if verbose:
             print("hascity:", hascity.groupdict())
-        rec['title'] = hascity.group('alltitle').strip(' ,.—-')
+        rec['maintitle'] = hascity.group('alltitle').strip(' ,.—-')
         rec['city'] = format_multi_cities(hascity.group('city'))
         rec['publisher'] = hascity.group('publisher').strip(' .,')
         rec['year'] = hascity.group('year')
         rec.tail = hascity.group('tail')
     else:
-        rec['title'] = "NOTITLE"
+        rec['maintitle'] = "NOTITLE"
         rec['city'] = ''
         rec['publisher'] = ''
         rec['year'] = ''
+    if 'title' not in rec:
+        rec['title'] = rec['maintitle']
     return rec
 
 
@@ -614,7 +630,7 @@ a sequence is encountered. When an expected next item is missing, a
 def main():
     """main processing"""
     args = parse_arguments()
-    csv_writer = csv.DictWriter(args.outfile, fieldnames = Record().fields)
+    csv_writer = csv.DictWriter(args.outfile, fieldnames = Record().fields, extrasaction='ignore')
     author = None
     titlerec = None
     csv_writer.writeheader()
