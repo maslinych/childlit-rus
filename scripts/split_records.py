@@ -566,7 +566,7 @@ def extract_title(rec, prev=None, verbose=False):
     else:
         break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d«(].+?[,.)?!—-])\s*'
                    + INFO, re.U | re.VERBOSE )
-    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.)?(?<tail>.*)$', re.U | re.VERBOSE)
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])((?<addon>.+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*)$', re.U | re.VERBOSE)
     ref = re.compile(r'(?<alltitle>.+)\s+См\.\s*(?<ref>[1-9][0-9]{0,4})\.$')
     hascity = break_at_city.match(rec.tail)
     is_the_same = the_same.match(rec.tail)
@@ -583,7 +583,7 @@ def extract_title(rec, prev=None, verbose=False):
             rec['publisher'] = is_breakable.group('publisher').strip(' .,')
             rec['year'] = is_breakable.group('year')
             try:
-                rec['titleaddon'] = the_same_hascity.group('alltitle')
+                rec['titleaddon'] = the_same_hascity.group('alltitle').strip(' ,.')
                 rec['title'] = ' : '.join([rec['maintitle'], rec['titleaddon']])
             except AttributeError:
                 pass
@@ -593,6 +593,10 @@ def extract_title(rec, prev=None, verbose=False):
             rec['publisher'] = prev['publisher']
             if is_the_same.group('year'):
                 rec['year'] = is_the_same.group('year')
+                addon = is_the_same.group('addon')
+                if addon:
+                    rec['titleaddon'] = addon.strip(' ,.')
+                    rec['title'] = ' : '.join([rec['maintitle'], rec['titleaddon']])
             else:
                 rec['year'] = prev['year']
             rec.tail = is_the_same.group('tail')
