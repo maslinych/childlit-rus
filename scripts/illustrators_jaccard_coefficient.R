@@ -8,7 +8,7 @@ library(stringr)
 vertices_list <- function(network, cluster_id) {
   cluster <- network %>%
     filter(community_id == cluster_id)
-  cluster$source_node <- str_c(cluster$source_node< "(author)", sep="")
+  cluster$source_node <- str_c(cluster$source_node, "(author)", sep="")
   cluster$target_node <- str_c(cluster$target_node, "(illustrator)", sep="")
   nodes_list <- unique(c(c(cluster$source_node), c(cluster$target_node)))
   return(nodes_list)
