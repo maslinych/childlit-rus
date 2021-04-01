@@ -28,7 +28,7 @@ calculate <- function(args$indir, args$outdir) {
   
   coeff = data.frame(volume1 = character(), volume2 = character(), 
                      cluster_id1 = character(), cluster_id2 = character(),
-                     jaccard_coeff = numeric())
+                     metric = numeric())
   
   n_row = 0
   
