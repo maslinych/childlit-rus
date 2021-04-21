@@ -92,9 +92,9 @@ parser <- add_option(parser, c("-o", "--outdir"),
                      help="Ouptput directory where histogram of bhattachryya distance and table with metric are uploaded")
 args <- parse_args(parser)
 
-essential <- function(args$indir, args$outdir) {
-  volumes <- c("32-39", "40-45", "46-48", "49-50", "51-52", "53-54", "55-57", "58-60", "61-63",
-               "64-66", "67-69", "70-71", "72-73", "74-75", "76-78", "79-81", "82-84")
+main <- function(args) {
+  volumes <- c("1932-1939", "1940-1945", "1946-1948", "1949-1950", "1951-1952", "1953-1954", "1955-1957", "1958-1960", "1961-1963",
+               "1964-1966", "1967-1969", "1970-1971", "1972-1973", "1974-1975", "1976-1978", "1979-1981", "1982-1984")
   distances <- data.frame()
   for(n_volume in 1:length(volumes)){
     if(n_volume < length(volumes)){
@@ -104,7 +104,7 @@ essential <- function(args$indir, args$outdir) {
         curr_comm <- leave_comm(curr_period_coeff, i)
         for(j in unique(prev_period_coeff$community_id)){
           prev_comm <- leave_comm(prev_period_coeff, j)
-          r <- alternative_bhattacharyya(curr_comm, prev_comm)
+          r <- bhattacharyya(curr_comm, prev_comm)
           distance <- data.frame(volumes[n_volume+1], i, volumes[n_volume], j, r)
           distances <- rbind(distances, distance)
         }
@@ -113,3 +113,6 @@ essential <- function(args$indir, args$outdir) {
   }
   generate_output(distances, args$outdir)
 }
+
+main(args)
+
