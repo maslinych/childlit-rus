@@ -232,12 +232,12 @@ preprocess <- function(data, composition) {
     filter_data
 }
 
-edge.list <- function(authors.list, illus.list, period) {
+edge.list <- function(authors.list, illus.list, period, filepath) {
   proto.edge.list <- authors.list %>%
     inner_join(illus.list, by = "volume")
   edge.list <- proto.edge.list %>%
     select(author, illustrator)
-  write.csv(edge.list, paste(period, "edge_list.csv", sep = "_"), row.names = FALSE)
+  write.csv(edge.list, paste0(filepath, "/", paste(period, "edge_list.csv", sep = "_")), row.names = FALSE)
   return(edge.list)
 }
 
@@ -294,7 +294,7 @@ network <- function(matrix, attribute, content) {
   return(net)
 }
 
-measure <- function(net, bimodal=FALSE, content, period, filename) {
+measure <- function(net, bimodal=FALSE, content, period, filepath) {
   metrics <- data.frame(period = period, Name = V(net)$name, 
                        Degree = graph.strength(net), 
                        Betweeness = betweenness(net),
@@ -304,12 +304,12 @@ measure <- function(net, bimodal=FALSE, content, period, filename) {
       mutate(status = V(net)$status)
   }
   options(scipen=100)
-  write.csv(metrics, paste(period, content, filename, sep = "_"), row.names = FALSE)
+  write.csv(metrics, paste0(filepath, "/", paste(period, content, sep = "_"), ".csv"), row.names = FALSE)
   return(metrics)
 }
 
-visualize <- function(net, content, period, filename) {
-  png(paste(period, content, filename), width = 2000, height = 2000)
+visualize <- function(net, content, period, filename, filepath) {
+  png(paste0(filepath, "/", paste(period, content, filename, sep = "_")), width = 2000, height = 2000)
   if(content == "general"){
     plot.igraph(net, vertex.size = 4, vertex.label = NA, edge.width = E(net)$weight)
   }
@@ -323,7 +323,7 @@ visualize <- function(net, content, period, filename) {
   dev.off()
 }
 
-com.detect <- function(net, content, period) {
+com.detect <- function(net, content, period, filepath) {
   set.seed(1234)
   fgcommune <- fastgreedy.community(net, weights = E(net)$weight)
   V(net)$community <- fgcommune$membership
@@ -340,7 +340,7 @@ com.detect <- function(net, content, period) {
   }
   membership <- data.frame(Name = as.vector(V(net.c)$name), 
                            Community = as.vector(V(net.c)$community))
-  write.csv(membership, paste(period, content, "membership.csv", sep = "_"), 
+  write.csv(membership, paste0(filepath, "/", paste(period, content, "membership.csv", sep = "_")), 
             row.names = FALSE)
   return(net.c)
 }
@@ -350,7 +350,7 @@ select.com <- function(net, community) {
   return(net.r)
 }
 
-weight_communities_table <- function(net, years) {
+weight_communities_table <- function(net, years, filepath) {
   crews <- data.frame()
   for(i in unique(V(net)$community)){
     net_reduced <- subgraph(net, which(V(net)$community == i))
@@ -366,7 +366,7 @@ weight_communities_table <- function(net, years) {
       select(name, status, weights, community_id, years)
     crews <- rbind(crews, crew) 
   }
-  write.csv(crews, paste(paste("nodes", years, sep = "_"), ".csv", sep = ""), 
+  write.csv(crews, paste(filepath, "/", paste("nodes", years, sep = "_"), ".csv", sep = ""), 
             row.names = FALSE)
 }
 
@@ -381,46 +381,68 @@ parser <- add_option(parser, c("-y", "--years"),
                     help="Publishing years covered in a volume")
 args <- parse_args(parser)
 
-main <- function(args$inillus, args$inauthors, args$outdir, args$years) {
-    illus.list <- read_tsv(args$inillus, col_names = c("illustrator", "volume"))
-    illus.list <- preprocess(illus.list, "illustrators")
-    authors.list <- read_tsv(args$inauthors, col_names = c("author", "volume"))
-    authors.list <- preprocess(authors.list, "authors")
-    setwd(args$outdir)
-  el <- edge.list(authors.list, illus.list, args$years)
+main <- function(args) {
+  print("preprocessing input files")
+  illus.list <- read_tsv(args$inillus, col_names = c("illustrator", "volume"))
+  illus.list <- preprocess(illus.list, "illustrators")
+  authors.list <- read_tsv(args$inauthors, col_names = c("author", "volume"))
+  authors.list <- preprocess(authors.list, "authors")
+  print("creating edge list")
+  el <- edge.list(authors.list, illus.list, period = args$years, filepath = args$outdir)
+  print("constructing incidence matrix")
   inc.mat <- incidence.mat(el)
+  print("constructing adjacency matrices")
   adj.mat.a <- adjacency.mat(inc.mat)
   adj.mat.i <- adjacency.mat(inc.mat, TRUE)
+  print("retrieving attributes")
   attr <- attribute(el)
+  print("constructing networks")
   net <- network(inc.mat, attr, "a-i")
   net.i <- network(adj.mat.i, content = "i-i")
   net.a <- network(adj.mat.a, content = "a-a")
-  write.csv(data.frame(general = graph.density(net, loops = FALSE), illustrators = graph.density(net.i, loops = FALSE), authors = graph.density(net.a, loops = FALSE)), paste(args$years, "density.csv", sep = "_"))
-  metrics <- measure(net, TRUE, "general", args$years, ".csv")
-  visualize(net <- net, "general", args$years, ".png")
-  net.c <- com.detect(net, "general", args$years)
-  weight_communities_table(net.c, args$years)
-  visualize(net.c, content = "communities", args$years, ".png")
+  print("computing graph density")
+  write.csv(data.frame(general = graph.density(net, loops = FALSE), illustrators = graph.density(net.i, loops = FALSE), authors = graph.density(net.a, loops = FALSE)), paste0(args$outdir, "/",paste(args$years, "density.csv", sep = "_")))
+  print("calculating metrics")
+  metrics <- measure(net, TRUE, "general", args$years, filepath = args$outdir)
+  print("drawing visualizations")
+  visualize(net <- net, "general", args$years, ".png", filepath = args$outdir)
+  print("detecting communities")
+  net.c <- com.detect(net, content = "general", period = args$years, filepath = args$outdir)
+  print("generating tables for the-cluster-to-node contributions calculation")
+  weight_communities_table(net.c, args$years, filepath = args$outdir)
+  print("visualizing communities")
+  visualize(net.c, content = "communities", args$years, ".png", filepath = args$outdir)
+  print("visualizing every community and calculating centrality metrics in every community")
   for(i in unique(V(net.c)$community)){
     net.r <- select.com(net.c, i)
-    visualize(net.r, content = "single community", args$years, filename = paste(paste("#", i, sep = ""), ".png",  sep = "_"))
-    metrics.r <- measure(net.r, TRUE, "single_community", args$years, paste(paste("#", i, sep = ""), ".csv", sep = "_"))
+    visualize(net.r, content = paste0("single_community", i), args$years, filename = ".png", filepath = args$outdir)
+    metrics.r <- measure(net.r, TRUE, content = paste0("single_community", i), args$years, filepath = args$outdir)
  }
-  metrics.i <- measure(net.i, FALSE, "illustrators", args$years, ".csv")
-  visualize(net.i, content = "general", args$years, paste("illustrators", ".png", sep = ""))
-  net.i.c <- com.detect(net.i, "illustrators", args$years)
-  visualize(net = net.i.c, content = "communities", args$years, paste("illustrators", ".png", sep = ""))
+  print("calculating centrality metrics in illustrators network")
+  metrics.i <- measure(net.i, FALSE, "illustrators", args$years, filepath = args$outdir)
+  print("visualizing illustrators network")
+  visualize(net.i, content = "general", args$years, paste("illustrators", ".png", sep = ""), filepath = args$outdir)
+  print("detecting communities of illustrators")
+  net.i.c <- com.detect(net.i, "illustrators", args$years, filepath = args$outdir) 
+  print("visualizing communities of illustrators")
+  visualize(net = net.i.c, content = "communities", args$years, paste("illustrators", ".png", sep = ""), filepath = args$outdir)
+  print("visualizing every community of illustrators and calculating centrality metrics in every community of illustrators")
   for(i in unique(V(net.i.c)$community)){
     net.i.r <- select.com(net.i.c, i)
-    visualize(net.i.r, content = "single community", args$years, filename = paste("illustrators", paste("#", i, sep = ""), ".png", sep = "_"))
+    visualize(net.i.r, content = "single community", args$years, filename = paste("illustrators", paste(i, sep = ""), ".png", sep = "_"), filepath = args$outdir)
   }
-  metrics.a <- measure(net.a, FALSE, "authors", args$years, ".csv")
-  visualize(net.a, content = "general", args$years, paste("authors", ".png", sep = ""))
-  net.a.c <- com.detect(net.a, "authors", args$years)
-  visualize(net = net.a.c, content = "communities", args$years, paste("authors", ".png", sep = ""))
+  print("calculating centrality metrics in authors network")
+  metrics.a <- measure(net.a, FALSE, "authors", args$years, filepath = args$outdir)
+  print("visualizing authors network")
+  visualize(net.a, content = "general", args$years, paste("authors", ".png", sep = ""), filepath = args$outdir)
+  print("detecting communities of authors")
+  net.a.c <- com.detect(net.a, "authors", args$years, filepath = args$outdir)
+  print("visualizing communities of authors")
+  visualize(net = net.a.c, content = "communities", args$years, paste("authors", ".png", sep = ""), filepath = args$outdir)
+  print("visualizing every community of authors and calculating centrality metrics in every community of authors")
   for(i in unique(V(net.a.c)$community)){
     net.a.r <- select.com(net.a.c, i)
-    visualize(net.a.r, content = "single community", args$years, filename = paste("authors", paste("#", i, sep = ""), ".png", sep = "_"))
+    visualize(net.a.r, content = "single community", args$years, filename = paste("authors", paste(i, sep = ""), ".png", sep = "_"), filepath = args$outdir)
   }
   }
 
