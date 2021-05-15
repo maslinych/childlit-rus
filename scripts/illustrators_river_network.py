@@ -3,10 +3,11 @@ import sys
 
 import numpy as np
 import pandas as pd
+import plotly
 import plotly.graph_objects as go
 import plotly.io.orca
 import random
-plotly.io.orca.config.executable = 'C:/Users/Roman.LAPTOP-088R18A9/AppData/Local/Programs/orca/orca.exe'
+#plotly.io.orca.config.executable = 'C:/Users/Roman.LAPTOP-088R18A9/AppData/Local/Programs/orca/orca.exe'
 
 
 def preprocess_data(in_dir, threshold):
@@ -16,8 +17,8 @@ def preprocess_data(in_dir, threshold):
     filtered_coeffs.cluster_id1 = filtered_coeffs.cluster_id1.astype('str')
     filtered_coeffs.cluster_id2 = filtered_coeffs.cluster_id2.astype('str')
 
-    filtered_coeffs['source'] = filtered_coeffs['volume1'] + " " + filtered_coeffs['cluster_id1']
-    filtered_coeffs['target'] = filtered_coeffs['volume2'] + " " + filtered_coeffs['cluster_id2']
+    filtered_coeffs['source'] = filtered_coeffs['volume1'] + "(" + filtered_coeffs['cluster_id1'] + ")"
+    filtered_coeffs['target'] = filtered_coeffs['volume2'] + "(" + filtered_coeffs['cluster_id2'] + ")"
 
     return filtered_coeffs
 
@@ -36,7 +37,7 @@ def create_indexes(filtered_coeffs, names):
 
 def generate_nodes_data(names):
     nodes_dataset = pd.DataFrame(pd.Series(names), columns=['name'])
-    nodes_dataset['date'] = nodes_dataset['name'].apply(lambda x: x[:5])
+    nodes_dataset['date'] = nodes_dataset['name'].apply(lambda x: x[:9])
     return nodes_dataset
 
 
@@ -48,8 +49,8 @@ def generate_color():
 
 
 def visualize(data, nodes_data, title, out_dir):
-    dates = ["32-39", "40-45", "46-48", "49-50", "51-52", "53-54", "55-57", "58-60", "61-63",
-             "64-66", "67-69", "70-71", "72-73", "74-75", "76-78", "79-81", "82-84"]
+    dates = ["1932-1939", "1940-1945", "1946-1948", "1949-1950", "1951-1952", "1953-1954", "1955-1957", "1958-1960", "1961-1963",
+             "1964-1966", "1967-1969", "1970-1971", "1972-1973", "1974-1975", "1976-1978", "1979-1981", "1982-1984"]
 
     clusters = list(set(nodes_data['name']))
 
