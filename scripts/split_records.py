@@ -380,7 +380,7 @@ class BibItem(object):
             self.num = 0
             self.suffix = 0
         else:
-            m = re.match(r"(?<num>[1-9][0-9]*)(?<suffix>[aаб])?$", string)
+            m = re.match(r"(?<num>[1-9][0-9]*)(-?(?<suffix>[aаб]))?$", string)
             suffixdict = {None: 0, 'a': 1, 'а': 1, 'б': 2}
             try:
                 self.num = int(m.group('num'))
@@ -641,21 +641,26 @@ def extract_title(rec, prev=None, verbose=False):
         break_at_city = re.compile(r'(?<alltitle>[^@]+\s+)@\s*' +
                                    INFO, re.U | re.VERBOSE)
     else:
-        break_at_city = re.compile(r'(?<alltitle>[\p{Lu}\d«(].+?[,.)?!—-])\s*'
+        break_at_city = re.compile(r'(?<alltitle>([\p{Lu}\d«(]|\.\.\.).+?[,.)?!—-])\s*'
                    + INFO, re.U | re.VERBOSE )
-    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])((?<addon>.+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*)$', re.U | re.VERBOSE)
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>((?<addon>.+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*))$', re.U | re.VERBOSE)
     ref = re.compile(r'(?<alltitle>.+)\s+См\.\s*(?<ref>[1-9][0-9]{0,4})\.$')
     hascity = break_at_city.match(rec.tail)
     is_the_same = the_same.match(rec.tail)
     is_ref = ref.match(rec.tail)
     if is_the_same:
-        the_same_hascity = break_at_city.match(is_the_same.group('tail').strip())
+        the_same_hascity = break_at_city.match(is_the_same.group('remainder').strip())
         rec['maintitle'] = prev['maintitle']
+        if verbose:
+            print("is_the_same", is_the_same.groupdict())
+            print("hascity", hascity.groupdict())
         if hascity and is_the_same.group('alltitle') == hascity.group('alltitle'):
             is_breakable = hascity
         else:
             is_breakable = the_same_hascity
         if is_breakable:
+            if verbose:
+                print("is_breakable:", is_breakable.groupdict())
             rec['city'] = format_multi_cities(is_breakable.group('city'))
             rec['publisher'] = is_breakable.group('publisher').strip(' .,')
             rec['year'] = is_breakable.group('year')
@@ -666,6 +671,8 @@ def extract_title(rec, prev=None, verbose=False):
                 pass
             rec.tail = is_breakable.group('tail')
         else:
+            if verbose:
+                print("is_breakable FALSE", is_the_same.groupdict())
             rec['city'] = prev['city']
             rec['publisher'] = prev['publisher']
             if is_the_same.group('year'):
