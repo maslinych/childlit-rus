@@ -320,7 +320,7 @@ CITY = r"""
 Чернигов|
 Черновицы|
 Черновцы|
-Чикмент|
+Чимкент|
 Чита|
 Чкалов|
 Шадринск|
@@ -561,19 +561,19 @@ or indicate that it is missing with the NOAUTHOR tag. Inconsistencies
 are marked with ERRAUTHOR tag.
     """
     fmtr = ExtendedFormatter()   
-    one_author = re.compile(AUTHOR_NAME + r"([[\W\s]--[,«]]+|\s+@[[\W\s]--[«]]+)(?<tail>.*)$", re.U | re.VERBOSE | re.V1)
+    one_author = re.compile(AUTHOR_NAME + r"(?(?=\s+\.\.\.)\s+(?<tail>.*)|([[\W\s]--[,«]]+|\s+@[[\W\s]--[«]]+)(?<tail>.*))$", re.U | re.VERBOSE | re.V1)
     dash = re.compile(r"^[\W\s]*[—][\W\s]*(?<tail>.*)$", re.U)
     multi_author = re.compile(r'(?<all>' + AUTHOR_NAME +
                               r'((\s+и\s+|,\s+)' + AUTHOR_NAME + r')+' +
-                              r')[\W\s]+(?<tail>.*)$', re.U | re.VERBOSE)
+                              r')(?(?=\s+\.\.\.)\s+(?<tail>.*)|[\W\s]+(?<tail>.*))$', re.U | re.VERBOSE)
     single_name_authors = re.compile(r"(?<last>" + SINGLE_AUTHORS +
-                                     r")[\W\s]+(?<tail>.*)$", re.U | re.VERBOSE )
+                                     r")(?(?=\s+\.\.\.)\s+(?<tail>.*)|[\W\s]+(?<tail>.*))$", re.U | re.VERBOSE )
     and_others = re.compile(AUTHOR_NAME +
                             r"\s+и\s+др\.\s+(?<tail>(?<head>[^/]+)" +
                             r"(/\s*(?<others>(" + INI_AUTHOR + r"[,;.]\s+)+))?.*)$",
                             re.U | re.VERBOSE)
-    noauthor_tag = re.compile(r"^\s*@NOAUTHOR@[[\W\s]--[«]]+(?<tail>.*)$", re.V1)
-    author_tag = re.compile(r"^\s*@AUTHOR:(?<all>[^@]+)@[[\W\s]--[«]]+(?<tail>.*)$", re.V1)
+    noauthor_tag = re.compile(r"^\s*@NOAUTHOR@(?(?=\s+\.\.\.)\s+(?<tail>.*)|[[\W\s]--[«]]+(?<tail>.*))$", re.V1)
+    author_tag = re.compile(r"^\s*@AUTHOR:(?<all>[^@]+)@(?(?=\s+\.\.\.)\s+(?<tail>.*)|[[\W\s]--[«]]+(?<tail>.*))$", re.V1)
     hasone = one_author.match(rec.tail)
     hasdash = dash.match(rec.tail)
     hasmulti = multi_author.match(rec.tail)
@@ -641,7 +641,7 @@ def extract_title(rec, prev=None, verbose=False):
         break_at_city = re.compile(r'(?<alltitle>[^@]+\s+)@\s*' +
                                    INFO, re.U | re.VERBOSE)
     else:
-        break_at_city = re.compile(r'(?<alltitle>([\p{Lu}\d«(]|\.\.\.).+?[,.)?!—-])\s*'
+        break_at_city = re.compile(r'(?<alltitle>([\p{Lu}\d«(i№]|\.\.\.).+?[,.)?!—-])\s*'
                    + INFO, re.U | re.VERBOSE )
     the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>((?<addon>.+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*))$', re.U | re.VERBOSE)
     ref = re.compile(r'(?<alltitle>.+)\s+См\.\s*(?<ref>[1-9][0-9]{0,4})\.$')
