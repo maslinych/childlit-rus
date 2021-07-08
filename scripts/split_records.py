@@ -431,7 +431,7 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
-                       'city', 'publisher', 'year', 'tail']
+                       'city', 'publisher', 'year', 'pages', 'printrun', 'price', 'tail']
 
     def serialize(self):
         out = {}
@@ -709,6 +709,31 @@ def extract_title(rec, prev=None, verbose=False):
     return rec
 
 
+def normalize_printrun(pr):
+    if pr:
+        pr = pr.replace(' ', '')
+        pr = pr.replace('О', '0')
+        pr = pr.replace('о', '0')
+    return pr
+
+def extract_printrun(rec, verbose=False):
+    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)[,.]|(?<pages>[0-9]+)\s+листов\.?)'
+    PRINTRUN = r'(\s+[Тт][.](?<printrun>[0-9 Оо]+)[,.])'
+    PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.\s+)?(?<kop>[0-9]+\s+[кК]\.)?))'
+    PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRICE + '|' + PRINTRUN + ')'
+    ##PR_EARLY = r'(Стр\.?\s+(?<pages>[0-9]+)[,.]|(?<pages>[0-9]+)\s+листов\.?)(\s+[Тт][.](?<printrun>[0-9 О]+)[,.])?(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.\s+)?(?<kop>[0-9]+\s+[кК]\.)?))?'
+    pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
+    has_early = pr_1918.match(rec.tail)
+    if has_early:
+        rec['pages'] = has_early.group('pages') or 'NOPAGES'
+        rec['printrun'] = normalize_printrun(has_early.group('printrun')) or 'NOPRINTRUN'
+        rec['price'] = has_early.group('price') or 'NOPRICE'
+        rec.tail = ' '.join([has_early.group('head'), has_early.group('tail')])
+    else:
+        rec['printrun'] = 'NOPRINTINFO'
+    return rec
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
@@ -736,6 +761,7 @@ def main():
         author = row['author']
         row = extract_title(row, titlerec, verbose=args.verbose)
         titlerec = row
+        row = extract_printrun(row, verbose=args.verbose)
         csv_writer.writerow(row.serialize())
 
 
