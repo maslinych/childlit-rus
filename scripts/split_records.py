@@ -717,9 +717,9 @@ def normalize_printrun(pr):
     return pr
 
 def extract_printrun(rec, verbose=False):
-    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)[,.]|(?<pages>[0-9]+)\s+листов\.?)'
-    PRINTRUN = r'(\s+[Тт][.](?<printrun>[0-9 Оо]+)[,.])'
-    PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.\s+)?(?<kop>[0-9]+\s+[кК]\.)?))'
+    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+(\s+и\s+[0-9]+\s+л[.]\s+черт)?)[,.]|(?<pages>[0-9]+)\s+листов\.?)'
+    PRINTRUN = r'(\s+[Тт][.](?<printrun>[0-9 Оо]+(?<part>\s*[(][0-9]+[—-][0-9]+\s+т\.[)])?))[,.]'
+    PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.)?\s*(?<kop>[0-9]+\s+[кК]\.)?))'
     PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRICE + '|' + PRINTRUN + ')'
     ##PR_EARLY = r'(Стр\.?\s+(?<pages>[0-9]+)[,.]|(?<pages>[0-9]+)\s+листов\.?)(\s+[Тт][.](?<printrun>[0-9 О]+)[,.])?(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.\s+)?(?<kop>[0-9]+\s+[кК]\.)?))?'
     pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
@@ -730,7 +730,9 @@ def extract_printrun(rec, verbose=False):
         rec['price'] = has_early.group('price') or 'NOPRICE'
         rec.tail = ' '.join([has_early.group('head'), has_early.group('tail')])
     else:
-        rec['printrun'] = 'NOPRINTINFO'
+        rec['pages'] = 'NOPAGES'
+        rec['printrun'] = 'NOPRINTRUN'
+        rec['price'] = 'NOPRICE'
     return rec
 
 
