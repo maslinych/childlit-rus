@@ -710,16 +710,18 @@ def extract_title(rec, prev=None, verbose=False):
     return rec
 
 
-def normalize_printrun(pr):
+def normalize_printrun(pr, part):
     if pr:
         pr = pr.replace(' ', '')
         pr = pr.replace('О', '0')
         pr = pr.replace('о', '0')
+    if part:
+        pr = '%s [%s]' % (pr, part)
     return pr
 
 def extract_printrun(rec, verbose=False):
     PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+(\s+и\s+[0-9]+\s+л[.]\s+черт)?)[,.]|(?<pages>[0-9]+)\s+листов\.?)'
-    PRINTRUN = r'(\s+[Тт][.](?<printrun>[0-9 Оо]+(?<part>\s*[(][0-9]+[—-][0-9]+\s+т\.[)])?))[,.]'
+    PRINTRUN = r'(\s+[Тт][.](?<printrun>[0-9 Оо]+)[,.]?(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?)'
     PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.)?\s*(?<kop>[0-9]+\s+[кК]\.)?))'
     PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRICE + '|' + PRINTRUN + ')'
     ##PR_EARLY = r'(Стр\.?\s+(?<pages>[0-9]+)[,.]|(?<pages>[0-9]+)\s+листов\.?)(\s+[Тт][.](?<printrun>[0-9 О]+)[,.])?(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.\s+)?(?<kop>[0-9]+\s+[кК]\.)?))?'
@@ -727,7 +729,7 @@ def extract_printrun(rec, verbose=False):
     has_early = pr_1918.match(rec.tail)
     if has_early:
         rec['pages'] = has_early.group('pages') or 'NOPAGES'
-        rec['printrun'] = normalize_printrun(has_early.group('printrun')) or 'NOPRINTRUN'
+        rec['printrun'] = normalize_printrun(has_early.group('printrun'), has_early.group('part')) or 'NOPRINTRUN'
         rec['price'] = has_early.group('price') or 'NOPRICE'
         rec.tail = ' '.join([has_early.group('head'), has_early.group('tail')])
     else:
