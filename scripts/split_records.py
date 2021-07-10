@@ -715,23 +715,38 @@ def normalize_printrun(pr, part):
         pr = pr.replace(' ', '')
         pr = pr.replace('О', '0')
         pr = pr.replace('о', '0')
+        pr = pr.strip()
     if part:
         pr = '%s [%s]' % (pr, part)
     return pr
 
 def extract_printrun(rec, verbose=False):
-    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+(\s+и\s+[0-9]+\s+л[.]\s+черт)?)[,.]|(?<pages>[0-9]+)\s+листов\.?)'
-    PRINTRUN = r'(\s+[Тт][.](?<printrun>[0-9 Оо]+)[,.]?(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?)'
-    PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.)?\s*(?<kop>[0-9]+\s+[кК]\.)?))'
-    PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRICE + '|' + PRINTRUN + ')'
-    ##PR_EARLY = r'(Стр\.?\s+(?<pages>[0-9]+)[,.]|(?<pages>[0-9]+)\s+листов\.?)(\s+[Тт][.](?<printrun>[0-9 О]+)[,.])?(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s[рР]\.\s+)?(?<kop>[0-9]+\s+[кК]\.)?))?'
+    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)(?<pagecomment>\s+и\s+[0-9]+\s+л[.]\s+черт)?[,.]|(?<pages>[0-9]+)\s+листов\.?)'
+    PRINTRUN = r'(\s+[Тт][.]\s*(?<printrun>[1-9][0-9 Оо]+)[,.]?(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?)'
+    PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
+    PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRINTRUN + PRICE + '?' + '|' + PRICE + ')'
     pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
     has_early = pr_1918.match(rec.tail)
+    N_PAGES = r'(?<pages>[0-9]+)\s+([Сс]тр|л)\.(?<pagecomment>(\s+и.+?(вклейки|иллюстр)\.)|[(](\p{Ll}|[0-9])[^)]+[)])?'
+    N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?\s*экз\.)'
+    N_PRICE = r'(\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
+    PR_LATE = r'(' + N_PAGES + N_PRINTRUN + '?' + N_PRICE + '?' + '|' + N_PRINTRUN + N_PRICE + '?' + '|' + N_PRICE + ')'
+    pr_1946 = re.compile(r'(?<head>.*?)' + PR_LATE + r'(?<tail>.*)$', re.U)
+    has_late = pr_1946.match(rec.tail)
     if has_early:
+        if verbose:
+            print("has_early:", has_early.groupdict())
         rec['pages'] = has_early.group('pages') or 'NOPAGES'
         rec['printrun'] = normalize_printrun(has_early.group('printrun'), has_early.group('part')) or 'NOPRINTRUN'
         rec['price'] = has_early.group('price') or 'NOPRICE'
         rec.tail = ' '.join([has_early.group('head'), has_early.group('tail')])
+    elif has_late:
+        if verbose:
+            print("has_late:", has_late.groupdict())
+        rec['pages'] = has_late.group('pages') or 'NOPAGES'
+        rec['printrun'] = normalize_printrun(has_late.group('printrun'), has_late.group('part')) or 'NOPRINTRUN'
+        rec['price'] = has_late.group('price') or 'NOPRICE'
+        rec.tail = ' '.join([has_late.group('head'), has_late.group('tail')])        
     else:
         rec['pages'] = 'NOPAGES'
         rec['printrun'] = 'NOPRINTRUN'
