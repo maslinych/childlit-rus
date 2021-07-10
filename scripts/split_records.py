@@ -730,10 +730,22 @@ def extract_printrun(rec, verbose=False):
     N_PAGES = r'(?<pages>[0-9]+)\s+([Сс]тр|л)\.(?<pagecomment>(\s+и.+?(вклейки|иллюстр)\.)|[(](\p{Ll}|[0-9])[^)]+[)])?'
     N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?\s*экз\.)'
     N_PRICE = r'(\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
-    PR_LATE = r'(' + N_PAGES + N_PRINTRUN + '?' + N_PRICE + '?' + '|' + N_PRINTRUN + N_PRICE + '?' + '|' + N_PRICE + ')'
+    PR_LATE = r'(' + N_PAGES + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + ')'
     pr_1946 = re.compile(r'(?<head>.*?)' + PR_LATE + r'(?<tail>.*)$', re.U)
     has_late = pr_1946.match(rec.tail)
-    if has_early:
+    try:
+        n_early = len(list(filter(None, has_early.groups())))
+    except AttributeError:
+        n_early = 0
+    try:
+        n_late = len(list(filter(None, has_late.groups())))
+    except AttributeError:
+        n_late = 0
+    if n_early > n_late:
+        more_early = True
+    else:
+        more_early = False
+    if has_early and more_early:
         if verbose:
             print("has_early:", has_early.groupdict())
         rec['pages'] = has_early.group('pages') or 'NOPAGES'
