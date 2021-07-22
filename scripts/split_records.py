@@ -448,7 +448,7 @@ def extract_number(line):
     Return a tuple with a number and a text line. If a line doesn't have the
     number return zero and full line as output.
     """
-    num = re.match(r'\s*(?<num>[1-9][0-9]*[aаб]?)\.\s+(?<tail>.+)', line)
+    num = re.match(r'\s*(?<num>[1-9][0-9]*-?[aаб]?)\.\s+(?<tail>.+)', line)
     if num:
         return (num.group('num'), num.group('tail'))
     else:
@@ -721,16 +721,17 @@ def normalize_printrun(pr, part):
     return pr
 
 def extract_printrun(rec, verbose=False):
-    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)(?<pagecomment>\s+и\s+[0-9]+\s+л[.]\s+черт)?[,.]|(?<pages>[0-9]+)\s+листов\.?)'
+    PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)(?<pagecomment>(\s+и)?\s+[0-9]+\s+л[.]\s+(черт|илл))?[,.]|(?<pages>[0-9]+)\s+лист(ов|а)?[.,])'
     PRINTRUN = r'(\s+[Тт][.]\s*(?<printrun>[1-9][0-9 Оо]+)[,.]?(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?)'
     PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
     PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRINTRUN + PRICE + '?' + '|' + PRICE + ')'
     pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
     has_early = pr_1918.match(rec.tail)
-    N_PAGES = r'(?<pages>[0-9]+)\s+([Сс]тр|л)[.,](?<pagecomment>(\s+и.+?(вклейки|иллюстр|чертежей|илл|таблицы)\.|\s*[(](\p{Ll}|[0-9])[^)]+[)])\.?)?'
-    N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9]-й\s+завод\s+(?<part>[0-9]+)?(\s+т(ыс)?\.)?)[)]\.?)?\s*экз[.,]|\s*(?<printrun>[1-9][0-9 Оо]+)\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+тыс\.\s+экз[.,][)])'
-    N_PRICE = r'(\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК][.,]))?|(?<kop>[0-9]+\s+[кК][.,])|Б/ц\.|Б\.\s+ц\.))'
-    PR_LATE = r'(' + N_PAGES + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + ')'
+    N_PAGES = r'(?<pages>[0-9]+)\s+([Сс]тр|л|с)[.,](?<pagecomment>((,\s+|\s+и)?.+?(вклейки|иллюстр|чертежей|черт|илл|таблицы|нот|портр|[0-9]+\s+л[.]\s+ил|слож\.\s+в\s+[0-9]+\s+с)\.|\s*[(](\p{Ll}|[0-9])[^)]+[)])\.?)?(\s*[—-]+\s*)?'
+    N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9]-й\s+завод\s+(?<part>[0-9]+)?(\s+т(ыс)?\.)?)[)]\.?)?\s*[Ээ]кз[.,]|\s*(?<printrun>[1-9][0-9 Оо]+)\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+тыс\.\s+[Ээ]кз[.,][)])'
+    N_PRICE = r'(\s*(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК][.,]))?|(?<kop>[0-9]+\s+[кК][.,])|Б/ц\.|Б\.\s+ц\.))'
+    SERIES = r'(\s+[(](?<series>\p{Lu}[^)]+)[)]\.?(\s*—\s*(?<dop>[^—]+—\s*)?)?|\s+—(?<dop>[^—]+)—\s*)'
+    PR_LATE = r'(' + N_PAGES + SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + '—\s*' + SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + ')'
     pr_1946 = re.compile(r'(?<head>.*?)' + PR_LATE + r'(?<tail>.*)$', re.U)
     has_late = pr_1946.match(rec.tail)
     try:
