@@ -435,7 +435,8 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
-                       'city', 'publisher', 'year', 'pages', 'printrun', 'price', 'tail']
+                       'city', 'publisher', 'year', 'series',
+                       'pages', 'printrun', 'price', 'bibaddon', 'tail']
 
     def serialize(self):
         out = {}
@@ -725,16 +726,17 @@ def normalize_printrun(pr, part):
 
 def extract_printrun(rec, verbose=False):
     PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)(?<pagecomment>(\s+и)?\s+[0-9]+\s+л[.]\s+(черт|илл))?[,.]|(?<pages>[0-9]+)\s+лист(ов|а)?[.,])'
-    PRINTRUN = r'(\s+[Тт][.]\s*(?<printrun>[1-9][0-9 Оо]+)[,.]?(\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.[)]\.?)?)'
-    PRICE = r'(\s+[Цц][.]\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
-    PR_EARLY = r'(' + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PRINTRUN + PRICE + '?' + '|' + PRICE + ')'
+    PRINTRUN = r'(\s*[Тт][.]\s*(?<printrun>[1-9][0-9 Оо]+)[,.]?(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9].+?завод.?(\s+.+?[0-9]+\s+т\.)?)[)]\.?)?)'
+    PRICE = r'(\s*[Цц][.]\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
+    SERIES = r'(\s*[(](?<series>\p{Lu}[^)]+?)\.?[)]\s*)'
+    PR_EARLY = r'(' + SERIES + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PAGES + SERIES + '?' + PRINTRUN + '?' + PRICE + '?' + '|' + PRINTRUN + PRICE + '?' + '|' + PRICE + ')'
     pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
     has_early = pr_1918.match(rec.tail)
     N_PAGES = r'(?<pages>[0-9]+)\s+([Сс]тр|л|с)[.,](?<pagecomment>((,\s+|\s+и)?.+?(вклейки|иллюстр|чертежей|черт|илл|таблицы|нот|портр|[0-9]+\s+л[.]\s+ил|слож\.\s+в\s+[0-9]+\s+с)\.|\s*[(](\p{Ll}|[0-9])[^)]+[)])\.?)?(\s*[—-]+\s*)?'
     N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9]-й\s+завод\s+(?<part>[0-9]+)?(\s+т(ыс)?\.)?)[)]\.?)?\s*[Ээ]кз[.,]|\s*(?<printrun>[1-9][0-9 Оо]+)\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+тыс\.\s+[Ээ]кз[.,][)])'
     N_PRICE = r'(\s*(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК][.,]))?|(?<kop>[0-9]+\s+[кК][.,])|Б/ц\.|Б\.\s+ц\.))'
-    SERIES = r'(\s+[(](?<series>\p{Lu}[^)]+)[)]\.?(\s*—\s*(?<dop>[^—]+—\s*)?)?|\s+—(?<dop>[^—]+)—\s*)'
-    PR_LATE = r'(' + N_PAGES + SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + '—\s*' + SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + ')'
+    N_SERIES = r'(\s+[(](?<series>\p{Lu}[^)]+)[)]\.?(\s*—\s*(?<dop>[^—]+—\s*)?)?|\s+—(?<dop>[^—]+)—\s*)'
+    PR_LATE = r'(' + N_PAGES + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + '—\s*' + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + ')'
     pr_1946 = re.compile(r'(?<head>.*?)' + PR_LATE + r'(?<tail>.*)$', re.U)
     has_late = pr_1946.match(rec.tail)
     try:
@@ -755,6 +757,7 @@ def extract_printrun(rec, verbose=False):
         rec['pages'] = has_early.group('pages') or 'NOPAGES'
         rec['printrun'] = normalize_printrun(has_early.group('printrun'), has_early.group('part')) or 'NOPRINTRUN'
         rec['price'] = has_early.group('price') or 'NOPRICE'
+        rec['series'] = has_early.group('series') or 'NOSERIES'
         rec.tail = ' '.join([has_early.group('head'), has_early.group('tail')])
     elif has_late:
         if verbose:
@@ -762,11 +765,15 @@ def extract_printrun(rec, verbose=False):
         rec['pages'] = has_late.group('pages') or 'NOPAGES'
         rec['printrun'] = normalize_printrun(has_late.group('printrun'), has_late.group('part')) or 'NOPRINTRUN'
         rec['price'] = has_late.group('price') or 'NOPRICE'
+        rec['series'] = has_late.group('series') or 'NOSERIES'
+        rec['bibaddon'] = has_late.group('dop') or ''
         rec.tail = ' '.join([has_late.group('head'), has_late.group('tail')])        
     else:
         rec['pages'] = 'NOPAGES'
         rec['printrun'] = 'NOPRINTRUN'
         rec['price'] = 'NOPRICE'
+        rec['series'] = 'NOSERIES'
+        rec['bibaddon'] = ''
     return rec
 
 
