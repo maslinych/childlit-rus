@@ -711,6 +711,10 @@ def extract_title(rec, prev=None, verbose=False):
         rec['year'] = ''
     if 'title' not in rec:
         rec['title'] = rec['maintitle']
+    try:
+        rec['year'] = int(rec['year'])
+    except ValueError:
+        rec['year'] = 'NA'
     return rec
 
 
@@ -724,7 +728,7 @@ def normalize_printrun(pr, part):
         pr = '%s [%s]' % (pr, part)
     return pr
 
-def extract_printrun(rec, verbose=False):
+def extract_printinfo(rec, verbose=False):
     PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)(?<pagecomment>(\s+и)?\s+[0-9]+\s+л[.]\s+(черт|илл))?[,.]|(?<pages>[0-9]+)\s+лист(ов|а)?[.,])'
     PRINTRUN = r'(\s*[Тт][.]\s*(?<printrun>[1-9][0-9 Оо]+)[,.]?(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9].+?завод.?(\s+.+?[0-9]+\s+т\.)?)[)]\.?)?)'
     PRICE = r'(\s*[Цц][.]\s+(?<price>(?<rub>[0-9]+\s+[рР]\.)(\s*(?<kop>[0-9]+\s+[кК]\.))?|(?<kop>[0-9]+\s+[кК]\.)))'
@@ -804,7 +808,7 @@ def main():
         author = row['author']
         row = extract_title(row, titlerec, verbose=args.verbose)
         titlerec = row
-        row = extract_printrun(row, verbose=args.verbose)
+        row = extract_printinfo(row, verbose=args.verbose)
         csv_writer.writerow(row.serialize())
 
 
