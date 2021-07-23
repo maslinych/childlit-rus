@@ -648,7 +648,7 @@ def extract_title(rec, prev=None, verbose=False):
         break_at_city = re.compile(r'(?<alltitle>([\p{Lu}\d«(i№]|\.\.\.).+?[,.)?!—-])\s*'
                    + INFO, re.U | re.VERBOSE )
     the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>((?<addon>.+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*))$', re.U | re.VERBOSE)
-    ref = re.compile(r'(?<alltitle>.+)\s+См\.\s*№?\s*(?<ref>[1-9][0-9]{0,4})\.?$')
+    ref = re.compile(r'(?<alltitle>.+)\s+[(]?См\.\s*№?\s*(?<ref>[1-9][0-9]{0,4})\s*[)]?\.?$')
     hascity = break_at_city.match(rec.tail)
     is_the_same = the_same.match(rec.tail)
     is_ref = ref.match(rec.tail)
