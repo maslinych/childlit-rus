@@ -648,7 +648,7 @@ def extract_title(rec, prev=None, verbose=False):
     else:
         break_at_city = re.compile(r'(?<alltitle>([\p{Lu}\d«(i№]|\.\.\.).+?[,.)?!—-])\s*'
                    + INFO, re.U | re.VERBOSE )
-    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>((?<addon>.+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*))$', re.U | re.VERBOSE)
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>((?<addon>[^@]+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*))$', re.U | re.VERBOSE)
     ref = re.compile(r'(?<alltitle>.+)\s+[(]?См\.\s*№?\s*(?<ref>[1-9][0-9]{0,4})\s*[)]?\.?$')
     hascity = break_at_city.match(rec.tail)
     is_the_same = the_same.match(rec.tail)
@@ -758,7 +758,7 @@ def extract_printinfo(rec, verbose=False):
     N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9]-й\s+завод\s+(?<part>[0-9]+([ —-]+[0-9]+)?)?(\s+т(ыс)?\.)?)[)]\.?)?\s*[Ээ]кз[.,]|\s*(?<printrun>[1-9][0-9 Оо]+)\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+тыс\.\s+[Ээ]кз[.,][)])'
     N_PRICE = r'(\s*(?<price>((?<rub>[0-9]+)\s+[рР]\.)(\s*((?<kop>[0-9]+)\s+[кК][.,]))?|((?<kop>[0-9]+)\s+[кК][.,])|Б/ц\.|Б\.\s+ц\.))'
     N_SERIES = r'(\s+[(](?<series>\p{Lu}[^)]+)[)]\.?(\s*—\s*(?<dop>[^—]+—\s*)?)?|\s+—(?<dop>[^—]+)—\s*)'
-    PR_LATE = r'(' + N_PAGES + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + '—\s*' + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + ')'
+    PR_LATE = r'(' + N_PAGES + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + '—\s*' + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + '|' + N_PRINTRUN + ')'
     pr_1946 = re.compile(r'(?<head>.*?)' + PR_LATE + r'(?<tail>.*)$', re.U)
     has_late = pr_1946.match(rec.tail)
     try:
