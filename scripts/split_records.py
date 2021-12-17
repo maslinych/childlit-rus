@@ -534,6 +534,7 @@ attribute and start and end line numbers)
 
 
 def format_multi_authors(authors):
+    """return normalized string representafor multiple authors"""
     out = []
     fmtr = ExtendedFormatter()
     if not authors.endswith('.'):
@@ -641,6 +642,7 @@ def format_multi_cities(cities):
 
 
 def extract_title(rec, prev=None, verbose=False):
+    """break record into title-related part and publication data using city as a hint"""
     INFO = r'(?<city>(' + CITY + r')(\s?(;|—-?)\s?(' + CITY + r')){0,4})[.,:](?<publisher>.*?)\s+(?<year>19[1-8][0-9]|[Бб]\.\s+г\.|[Бб]/г\.?)[\p{P}\s](\s*—\s*)?(?<tail>.*)$'
     if '@' in rec.tail:
         break_at_city = re.compile(r'(?<alltitle>[^@]+\s+)@\s*' +
