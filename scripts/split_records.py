@@ -436,7 +436,8 @@ class Record(dict):
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
                        'city', 'publisher', 'year', 'series',
-                       'pages', 'printrun', 'price', 'bibaddon', 'tail']
+                       'pages', 'printrun', 'price', 'bibaddon', 'tail',
+                       'section']
 
     def serialize(self):
         out = {}
@@ -461,14 +462,37 @@ def extract_number(line):
 
 def numbered_lines(infile):
     """Generator producing numbered lines as tuples"""
+    section = ''
     for lineno, line in enumerate(infile, start=1):
         line = line.strip()
-        if line.startswith('#END'):
-            break
+        if line.startswith('#'):
+            if line.startswith('#END'):
+                break
+            else:
+                section = line
         if line:
             num, tail = extract_number(line)
-            yield (lineno, num, tail)
+            yield (lineno, num, tail, section)
 
+
+def collect_sections(prev, sec):
+    """format nested section string [str], str -> [str]"""
+    try:
+        last = prev[-1]
+        depth = len(last) - len(last.strip('#'))
+        sec_depth = len(sec) - len(sec.strip('#'))
+        if sec_depth > depth:
+            prev.append(sec)
+        elif sec_depth < depth:
+            while len(prev) > sec_depth - 1:
+                del prev[-1]
+            prev.append(sec)
+        elif sec_depth == depth and not last == sec:
+            del prev[-1]
+            prev.append(sec)
+        return prev
+    except IndexError:
+        return [sec]
 
 def iter_records(numlines, k=10):
     """Join a series of numbered lines into a list of sequentially
@@ -478,9 +502,16 @@ attribute and start and end line numbers)
     itemno = 0
     stack = []
     startline = 0
-    for lineno, n, txt in numlines:
+    seclist = []
+    for lineno, n, txt, section in numlines:
         if n == 0:
             num = 0
+            if seclist:
+                if not section == seclist[-1]:
+                    seclist = collect_sections(seclist, section)
+            else:
+                if section:
+                    seclist = collect_sections(seclist, section)                 
         else:
             num = BibItem(string=n)
         if num > itemno:
@@ -491,6 +522,7 @@ attribute and start and end line numbers)
                     rec['num'] = itemno
                     rec.start = startline
                     rec.end = lineno - 1
+                    rec['section'] = ' '.join(seclist)
                     yield rec
                     stack = []
                     startline = lineno
@@ -507,6 +539,7 @@ attribute and start and end line numbers)
                 rec['num'] = itemno
                 rec.start = startline
                 rec.end = lineno - 1
+                rec['section'] = ' '.join(seclist)
                 yield rec
                 stack = []
                 itemno += 1
@@ -514,6 +547,7 @@ attribute and start and end line numbers)
                 while num > itemno:
                     rec = Record(tail = 'MISSING', start = startline, end = lineno - 1)
                     rec['num'] = itemno
+                    rec['section'] = ' '.join(seclist)
                     yield rec
                     itemno += 1
             itemno = num
@@ -530,6 +564,7 @@ attribute and start and end line numbers)
         rec['num'] = str(itemno)
         rec.start = startline
         rec.end = lineno
+        rec['section'] = section
         yield rec
 
 
@@ -691,6 +726,11 @@ def extract_title(rec, prev=None, verbose=False):
             else:
                 rec['year'] = prev['year']
             rec.tail = is_the_same.group('tail')
+        # populate current record with fields from previous rec,
+        # in case there's no such field already filled
+        for k, v in prev.items():
+            if k not in rec:
+                rec[k] = v
     elif hascity:
         if verbose:
             print("hascity:", hascity.groupdict())
@@ -804,7 +844,7 @@ def extract_printinfo(rec, verbose=False):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
-lines are joined to the previous numbered line, until the next tem in
+lines are joined to the previous numbered line, until the next item in
 a sequence is encountered. When an expected next item is missing, a
 'MISSING' tag is printed in the output CSV file.""")
     parser.add_argument('infile', nargs='?', help='Input file (txt)',
