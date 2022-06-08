@@ -691,6 +691,7 @@ def extract_title(rec, prev=None, verbose=False):
     is_the_same = the_same.match(rec.tail)
     is_ref = ref.match(rec.tail)
     if is_the_same:
+        # то же
         the_same_hascity = break_at_city.match(is_the_same.group('remainder').strip())
         rec['maintitle'] = prev['maintitle']
         if verbose:
@@ -797,10 +798,10 @@ def extract_printinfo(rec, verbose=False):
     pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
     has_early = pr_1918.match(rec.tail)
     N_PAGES = r'(?<pages>[0-9]+)\s+([Сс]тр|л|с)[.,](?<pagecomment>((,\s+|\s+и)?.+?(вклейки|иллюстр|чертежей|черт|илл|таблицы|нот|портр|[0-9]+\s+л[.]\s+(ил|портр)|слож\.\s+в\s+[0-9]+\s+с)\.|\s*[(](\p{Ll}|[0-9])[^)]+[)])\.?)?(\s*[—-]+\s*)?'
-    N_PRINTRUN = r'(\s*(?<printrun>[1-9][0-9 Оо]+)(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9]-й\s+завод\s+(?<part>[0-9]+([ —-]+[0-9]+)?)?(\s+т(ыс)?\.)?)[)]\.?)?\s*[Ээ]кз[.,]?|\s*(?<printrun>[1-9][0-9 Оо]+)\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+тыс\.\s+[Ээ]кз[.,]?[)])'
+    N_PRINTRUN = r'(\s*[[]?(?<printrun>[1-9][0-9 Оо]+)[]]?(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9]-й\s+завод\s+(?<part>[0-9]+([ —-]+[0-9]+)?)?(\s+т(ыс)?\.)?)[)]\.?)?\s*[Ээ]кз[.,]?|\s*(?<printrun>[1-9][0-9 Оо]+)\s*[(](?<part>[0-9]+[ —-]+[0-9]+)\s+тыс\.\s+[Ээ]кз[.,]?[)])'
     N_PRICE = r'(\s*(?<price>((?<rub>[0-9]+)\s+[рР]\.)(\s*((?<kop>[0-9]+)\s+[кК][.,]))?|((?<kop>[0-9]+)\s+[кК][.,])|Б/ц\.|Б\.\s+ц\.)),?'
-    N_SERIES = r'(\s+[(](?<series>\p{Lu}[^)]+)[)]\.?(\s*—\s*(?<dop>[^—]+—\s*)?)?|\s+—(?<dop>[^—]+)—\s*)'
-    PR_LATE = r'(' + N_PAGES + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + '—\s*' + N_SERIES + '?' + N_PRICE + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + '|' + N_PRINTRUN + ')'
+    N_SERIES = r'(\s+[(](?<series>\p{Lu}[^)]+)[)]\.?\s*—?\s*(?<dop>[^—]+—\s*)?|\s+—(?<dop>[^—]+)—\s*)'
+    PR_LATE = r'(' + '\s*—?\s*' + N_PAGES + N_SERIES + '?' + '\s*—?\s*' + N_PRICE + '\s*—?\s*' + N_PRINTRUN + '|' + '—?\s*' + N_SERIES + '?' + N_PRICE + '\s*—?\s*' + N_PRINTRUN + '|' + N_PAGES + SERIES + '?' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')?' + N_PRICE + '?' + '|' + '(' + PRINTRUN + '|' + N_PRINTRUN + ')' + N_PRICE + '?' + '|' + N_PRICE + '|' + N_PRINTRUN + ')'
     pr_1946 = re.compile(r'(?<head>.*?)' + PR_LATE + r'(?<tail>.*)$', re.U)
     has_late = pr_1946.match(rec.tail)
     try:
