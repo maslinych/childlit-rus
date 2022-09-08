@@ -435,9 +435,9 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
-                       'city', 'publisher', 'year', 'series',
-                       'pages', 'printrun', 'price', 'addressee', 'bibaddon', 'tail',
-                       'section']
+                       'subtitle', 'editorial', 'bibaddon', 'city', 'publisher',
+                       'year', 'series', 'pages', 'printrun', 'price',
+                       'addressee', 'tail', 'section']
 
     def serialize(self):
         out = {}
@@ -870,6 +870,30 @@ def extract_addressee(rec, verbose=False):
     return rec
 
 
+def parse_title(rec, verbose=False):
+    """Extract genre/subtitle and editorial info from a title string"""
+    TITLE = r'(?<maintitle>(\p{Lu}|[«"0-9]).+?)[.]?\s*'
+    SUBTITLE = r'(([(](?<subtitle>«?\p{Lu}[^)]+[^.])[.]?[)]\s*|(?<=[.])\s+(?<subtitle>\p{Lu}[^()]+?[^.]))[.]?\s*)'
+    ILL = r'(?<editorial>((Рис|Илл|Фотограф)[.,]|Гравюры|Автолитографии|Линогравюры|Силуэты|Оформление|Фотомонтаж)\s+.+)\s*'
+    EDITORIAL = r'((?<editorial>(Ред[.]?|Под ред|С предисл|Со (вступ. )?статьей|Статья|Пред(исл)?|Примеч[.]?|Комментарии|Вступ(ит)?|Сост(авил|авитель|авлено)?|Обр(аб)?(отка)?|Пер(ераб)?|в (пер|обработке)|В изложении|Переделка с|Собрал|Авториз(ованный)?|Сокр(ащ)?(eно)?|Пересказ(ал)?|Пояснит|Слова|Музыка|[(]?Текст)[.,]?\s+.+)\s*)'
+    ADDON = r'((?<addon>((Вып|Изд|Ч|Кн)[.,]?\s+[^ ]+|В\s+[^ ]+\s+вып(усках|[.])))[.]?\s*)'
+    SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
+    TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + SOURCE + '|' + ILL + '|' + EDITORIAL + ')' + ADDON + '?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + ')?' + ADDON + '?' + ')' + '[ .,:]*$'
+    re_1vol = re.compile(TITLE_1VOL, re.U)
+    has_title_1vol = re_1vol.match(rec['title'])
+    if has_title_1vol:
+        rec['title'] = has_title_1vol.group('maintitle')
+        rec['subtitle'] = has_title_1vol.group('subtitle')
+        rec['editorial'] = has_title_1vol.group('editorial') or ''
+        addon = has_title_1vol.group('addon')
+        if addon:
+            try:
+                rec['bibaddon'] = ' :: '.join([rec['bibaddon'], addon])
+            except KeyError:
+                rec['bibaddon'] = addon
+    return rec
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
@@ -899,6 +923,7 @@ def main():
         titlerec = row
         row = extract_printinfo(row, verbose=args.verbose)
         row = extract_addressee(row, verbose=args.verbose)
+        row = parse_title(row, verbose=args.verbose)
         csv_writer.writerow(row.serialize())
 
 
