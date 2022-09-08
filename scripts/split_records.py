@@ -11,12 +11,12 @@ AUTHOR_NAME = r"""
 (?!Герой\sСоветского\s+Союза)
 (?<last>           # Фамилия:
 ([ДдО]['’]|[Дд]е[ -])?([Лл]а\s+)?\p{Lu}(\p{Ll}+|\p{Lu}+)      # Воронцов / д'Амичис де(-)?
-(-\p{Lu}(\p{Ll}+|p{Lu}+)|   # Воронцов-Вельяминов
+(-\p{Lu}(\p{Ll}+|\p{Lu}+)|   # Воронцов-Вельяминов
 -(отец|старший|заде|зода|оол|улы|яшь)|   # Дюма-отец Сарыг-оол
 \s+\p{Lu}\p{Ll}+(?=,))?# Сервантес Сааведра, Мигель 
 )
 (\s+\((?<real>     # расшифровка псевдонима:
-\p{Lu}(\p{Ll}+|p{Lu}+))\))? #  Петров (Бирюк)
+\p{Lu}(\p{Ll}+|\p{Lu}+))\))? #  Петров (Бирюк)
 (  # альтернатива — без запятой:
 \s+(?<ini>                                                  # инициалы или имена:
 \p{Lu}\p{Ll}{0,2}\.[\s-]?\p{Lu}\p{Ll}{0,2}\.([\s-]\p{Lu}\.)?  # Дм. Ив.; Г.-Х. (-A.)?
@@ -24,7 +24,7 @@ AUTHOR_NAME = r"""
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{3,}(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+)) # Иван Ильич
 |\p{Lu}\p{Ll}+-(Булат|бао|ф[эе]й|и|мин|Фу|Ю|хуа|цзин?|линь|юй|нань|чжень|ян|заде|ань)  # Хас-Булат, Юй-бао и тп.
 |\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}{0,2}\.              # Фенимор Д.
-|\p{Lu}(\p{Ll}+|p{Lu}+)(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+|\s+\(\p{Lu}+\p{Ll}*))) # Василий; Иоганн-Вольфганг; Шарль де
+|\p{Lu}(\p{Ll}+|\p{Lu}+)(-\p{Lu}\p{Ll}+)?(\s+де)?(?=(\.|,\s+\p{Lu}\p{Ll}+|\s+и\s+др\.|\s+и\s+\p{Lu}\p{Ll}+|,?\s+\[|\s+\((\p{Lu}\p{Ll}{0,2}\.\s+)+\p{Lu}\p{Ll}+|\s+\(\p{Lu}+\p{Ll}*))) # Василий; Иоганн-Вольфганг; Шарль де
 |  # альтернатива — после запятой:
 ,\s+(?<ini>братья|\p{Lu}\p{Ll}+)(?=\.)                          # Гримм, братья
 )(\s+
@@ -436,7 +436,7 @@ class Record(dict):
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
                        'city', 'publisher', 'year', 'series',
-                       'pages', 'printrun', 'price', 'bibaddon', 'tail',
+                       'pages', 'printrun', 'price', 'addressee', 'bibaddon', 'tail',
                        'section']
 
     def serialize(self):
@@ -842,6 +842,34 @@ def extract_printinfo(rec, verbose=False):
     return rec
 
 
+def extract_addressee(rec, verbose=False):
+    """Extract info on age of addresse from either tail or title"""
+    ADDR_PAREN = r'([(<]Д(ля)?|Для)(?<age>[^)]+?возраст[^)]+?)[.]?[)]'
+    paren_tail = re.compile(r'(?<head>.*?)' + ADDR_PAREN + r'(?<tail>.*)$', re.U)
+    has_tail_paren = paren_tail.match(rec.tail)
+    if has_tail_paren:
+        rec['addressee'] = 'для ' + has_tail_paren.group('age').strip()
+        rec.tail = ' '.join([has_tail_paren.group('head'), has_tail_paren.group('tail')])
+        return rec
+    ADDR_SLASH = r'[Дд]ля(?<age>[^/]+)воз[*-]?\s*ра[-]?с[-]?т[^/ ]+?\s*/'
+    title_slash = re.compile(r'(?<head>.*?)' + ADDR_SLASH + r'(?<tail>.*)$', re.U)
+    has_title_slash = title_slash.match(rec['title'])
+    ADDR_GENERAL = r'[Дд]ля(?<age>[^)\p{Lu}]+?)?воз[*-]?\s*ра[-]?с[-]?т[^/ ]+?\s*[:]?'
+    title_general = re.compile(r'(?<head>.*?)' + ADDR_GENERAL + r'(?<tail>.*)$', re.U)
+    has_title_general = title_general.match(rec['title'])
+    has_in_series = title_general.match(rec['series'])
+    if has_title_slash:
+        rec['addressee'] = 'для ' + has_title_slash.group('age').strip() + ' возраста'
+        rec['title'] = ' '.join([has_title_slash.group('head'), '/', has_title_slash.group('tail')])
+    elif has_title_general:
+        rec['addressee'] = 'для ' + has_title_general.group('age').strip() + ' возраста'
+        rec['title'] = ' '.join([has_title_general.group('head'), has_title_general.group('tail')])
+    elif has_in_series:
+        rec['addressee'] = 'для ' + has_in_series.group('age').strip() + ' возраста'
+        rec['title'] = ' '.join([has_in_series.group('head'), has_in_series.group('tail')])
+    return rec
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
@@ -870,6 +898,7 @@ def main():
         row = extract_title(row, titlerec, verbose=args.verbose)
         titlerec = row
         row = extract_printinfo(row, verbose=args.verbose)
+        row = extract_addressee(row, verbose=args.verbose)
         csv_writer.writerow(row.serialize())
 
 
