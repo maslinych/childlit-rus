@@ -156,6 +156,7 @@ CITY = r"""
 Грозный|
 Гурьев|
 Дзауджикау|
+Дзержинск|
 Днепропетровск|
 Донецк|
 Душанбе|
@@ -384,8 +385,8 @@ class BibItem(object):
             self.num = 0
             self.suffix = 0
         else:
-            m = re.match(r"(?<num>[1-9][0-9]*)(-?(?<suffix>[aаб]))?$", string)
-            suffixdict = {None: 0, 'a': 1, 'а': 1, 'б': 2}
+            m = re.match(r"(?<num>[1-9][0-9]*)(-?(?<suffix>[aабвгде]))?$", string)
+            suffixdict = {None: 0, 'a': 1, 'а': 1, 'б': 2, 'в': 3, 'г': 4, 'д': 5, 'е': 6}
             try:
                 self.num = int(m.group('num'))
                 self.suffix = suffixdict[m.group('suffix')]
@@ -394,7 +395,7 @@ class BibItem(object):
         self.value = (self.num, self.suffix)
 
     def __str__(self):
-        numtosuf = {0: '', 1: 'а', 2: 'б'}
+        numtosuf = {0: '', 1: 'а', 2: 'б', 3: 'в', 4: 'г', 5: 'д', 6: 'е'}
         return ''.join([str(self.num), numtosuf[self.suffix]])
 
     def __eq__(self, other):
@@ -453,7 +454,7 @@ def extract_number(line):
     Return a tuple with a number and a text line. If a line doesn't have the
     number return zero and full line as output.
     """
-    num = re.match(r'\s*(?<num>[1-9][0-9]*-?[aаб]?)\.\s+(?<tail>.+)', line)
+    num = re.match(r'\s*(?<num>[1-9][0-9]*-?[aабвгде]?)\.\s+(?<tail>.+)', line)
     if num:
         return (num.group('num'), num.group('tail'))
     else:
@@ -844,7 +845,7 @@ def extract_printinfo(rec, verbose=False):
 
 def extract_addressee(rec, verbose=False):
     """Extract info on age of addresse from either tail or title"""
-    ADDR_PAREN = r'([(<]Д(ля)?|Для)(?<age>[^)]+?возраст[^)]+?)[.]?[)]'
+    ADDR_PAREN = r'([(<]Д(ля)?|Для)(?<age>[^)]+?(возраст|детей|пионеров|школьников|подростков|маленьких|класс(ов|а)|школы)[^)]+?)[.]?[)]'
     paren_tail = re.compile(r'(?<head>.*?)' + ADDR_PAREN + r'(?<tail>.*)$', re.U)
     has_tail_paren = paren_tail.match(rec.tail)
     if has_tail_paren:
@@ -873,24 +874,25 @@ def extract_addressee(rec, verbose=False):
 def parse_title(rec, verbose=False):
     """Extract genre/subtitle and editorial info from a title string"""
     TITLE = r'(?<maintitle>(\p{Lu}|[«"0-9]).+?)[.]?\s*'
-    SUBTITLE = r'(([(](?<subtitle>«?\p{Lu}[^)]+[^.])[.]?[)]\s*|(?<=[.])\s+(?<subtitle>\p{Lu}[^()]+?[^.]))[.]?\s*)'
-    ILL = r'(?<editorial>((Рис|Илл|Фотограф)[.,]|Гравюры|Автолитографии|Линогравюры|Силуэты|Оформление|Фотомонтаж)\s+.+)\s*'
-    EDITORIAL = r'((?<editorial>(Ред[.]?|Под ред|С предисл|Со (вступ. )?статьей|Статья|Пред(исл)?|Примеч[.]?|Комментарии|Вступ(ит)?|Сост(авил|авитель|авлено)?|Обр(аб)?(отка)?|Пер(ераб)?|в (пер|обработке)|В изложении|Переделка с|Собрал|Авториз(ованный)?|Сокр(ащ)?(eно)?|Пересказ(ал)?|Пояснит|Слова|Музыка|[(]?Текст)[.,]?\s+.+)\s*)'
-    ADDON = r'((?<addon>((Вып|Изд|Ч|Кн)[.,]?\s+[^ ]+|В\s+[^ ]+\s+вып(усках|[.])))[.]?\s*)'
+    SUBTITLE = r'(([({](?<subtitle>«?\p{Lu}[^)]+[^.])[.]?[)}]\s*|(?<=[.])\s+(?<subtitle>\p{Lu}[^()]+?[^.]))[.]?\s*)'
+    ILL = r'((?<editorial>((Рис|Ил-?л(юстр)?[.]?|Обл[.]?|Фотограф|Художн?|Оформл|С\s+фотоилл)[.,]|Гравюры|Автолитографи[ия]|Линогравюры|Силуэты|Картинки|Оформление|Фотомонтаж|Фотоиллюстрации|С\s+фотоиллюстрациями|Фото|Портрет|Переплет[,]?|Обложка[,]?|Супер-обложка|Художники?|Художественное)\s+.+)\s*)'
+    EDITORIAL = r'((?<editorial>(/:|Ред[.]?|Под ред(акц)?(ией)?|Под общей ред(акц)?|Редакц(ия)?|Редколлегия:|Науч|Предисловие|С предисл|Со (вступ. )?статьей|Со вступительной|Статья|Пред(исл)?|Примеч([.]|ания)?|Комментарии|Вступ(ит)?(ельн(ая|ый))?|С приложением|Послесл(овие)?|Сост(авил|авила|авили|авитель|авлено|авление)?|Обр(аб)?(отка|отал)?|Перев(од)?|Перевел(а)?|Пер(ераб)?|[Вв] (пер|обработке)|В обраб|Лит|В изложении|В сокращении|В пересказе|Переделка с|Вольный пер(евод)?|Сокращенный пер(евод)?|Собрал|Авториз(ов)?(анный)?|Сокр(ащ)?(eно|ение)?|Редактор-составитель|Пересказ(ал)?|Записал(а)?|Запись|Подготовка текста|Пояснит|Слова|Музыка|[(]?Текст|Сюжет|Постановка|Режиссерские)[.,]?\s+.+)\s*)'
+    ADDON = r'((?<editorial>((::|Вып|Изд|Ч|Кн|Издание)[.,]?(\s+[^ ]+){1,4}|В\s+[^ ]+\s+вып(усках|[.])))[.]?\s*.*)'
     SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
-    TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + SOURCE + '|' + ILL + '|' + EDITORIAL + ')' + ADDON + '?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + ')?' + ADDON + '?' + ')' + '[ .,:]*$'
+    LANG = r'((?<editorial>На\s+.+?яз[.]?|С\s+.+?словарем)[.,]?\s*.*)'
+    TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + EDITORIAL + '|' + ILL + '|' + SOURCE + '|' + ADDON + '|' + LANG + ')?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + '|' + ADDON + '|' + LANG + ')?' + ')' + '[ .,:]*$'
     re_1vol = re.compile(TITLE_1VOL, re.U)
     has_title_1vol = re_1vol.match(rec['title'])
     if has_title_1vol:
         rec['title'] = has_title_1vol.group('maintitle')
         rec['subtitle'] = has_title_1vol.group('subtitle')
         rec['editorial'] = has_title_1vol.group('editorial') or ''
-        addon = has_title_1vol.group('addon')
-        if addon:
-            try:
-                rec['bibaddon'] = ' :: '.join([rec['bibaddon'], addon])
-            except KeyError:
-                rec['bibaddon'] = addon
+        # addon = has_title_1vol.group('addon')
+        # if addon:
+        #     try:
+        #         rec['bibaddon'] = ' :: '.join([rec['bibaddon'], addon])
+        #     except KeyError:
+        #         rec['bibaddon'] = addon
     return rec
 
 
