@@ -495,6 +495,15 @@ def collect_sections(prev, sec):
     except IndexError:
         return [sec]
 
+
+def join_record(stack):
+    """join a series of strings (lines from a txt file) into a single record string"""
+    tail = ' '.join(stack)
+    hypen_re = r"(?<pre>\p{Ll})[­-]\s+(?=\p{Ll})|(?<pre>\p{Lu})[­-]\s+(?=\p{Lu})|(?<pre>\p{Ll})­(?=\p{Ll})"
+    tail = re.sub(hypen_re, r'\g<pre>', tail)
+    return tail
+    
+
 def iter_records(numlines, k=10):
     """Join a series of numbered lines into a list of sequentially
 numbered items (Record instances with a defined 'num' key, tail
@@ -519,7 +528,7 @@ attribute and start and end line numbers)
             if num - itemno == 1:
                 # we have a regular next item
                 if stack:
-                    rec = Record(tail = ' '.join(stack))
+                    rec = Record(tail = join_record(stack))
                     rec['num'] = itemno
                     rec.start = startline
                     rec.end = lineno - 1
@@ -536,7 +545,7 @@ attribute and start and end line numbers)
                     stack.append('{}. {}'.format(num, txt))
                     continue
                 # we have a moderate gap in numbering, treat as next item
-                rec = Record(tail = ' '.join(stack))
+                rec = Record(tail = join_record(stack))
                 rec['num'] = itemno
                 rec.start = startline
                 rec.end = lineno - 1
@@ -561,7 +570,7 @@ attribute and start and end line numbers)
             stack.append('{}. {}'.format(num, txt))
     else:
         # end of file: yield a final record
-        rec = Record(tail = ' '.join(stack))
+        rec = Record(tail = join_record(stack))
         rec['num'] = str(itemno)
         rec.start = startline
         rec.end = lineno
@@ -876,7 +885,7 @@ def parse_title(rec, verbose=False):
     TITLE = r'(?<maintitle>(\p{Lu}|[«"0-9]).+?)[.]?\s*'
     SUBTITLE = r'(([({](?<subtitle>«?\p{Lu}[^)]+[^.])[.]?[)}]\s*|(?<=[.])\s+(?<subtitle>\p{Lu}[^()]+?[^.]))[.]?\s*)'
     ILL = r'((?<editorial>((Рис|Ил-?л(юстр)?[.]?|Обл[.]?|Фотограф|Худ(ож)?н?|Оформл|С\s+фотоилл|Общ)[.,]|Грав([.]|юры)?|Автолитографи[ия]|Линогравюры|Силуэты|Картинки|Оформление|Фотомонтаж|Фотоиллюстрации|С\s+фотоиллюстрациями|Фото|Портрет|Переплет[,]?|Обложка[,]?|Супер-обложка|Художники?|Художественное)\s+.+)\s*)'
-    EDITORIAL = r'([(]?(?<editorial>(/:|Ред[.]?|Под ред(акц)?(ией)?|Под общей ред(акц)?|Редакц(ия)?|Редколлегия:|Науч|Предисловие|С предисл|Со (вступ. )?статьей|Со вступительной|Статья|Пред(исл)?|Примеч([.]|ания)?|Комментарии|Вступ(ит)?(ельн(ая|ый))?|С приложением|Послесл(овие)?|Сост(авил|авила|авили|авитель|авлено|авление)?|Обр(аб)?(отка|отал)?|Перев(од)?|Перевел(а)?|Пер(ераб)?|[Вв] (пер|обработке)|В обраб|Лит|В изложении|В сокращении|В пересказе|Переделка с|Вольный пер(евод)?|Сокращенный пер(евод)?|Собрал|Авториз(ов)?(анный)?|Сокр(ащ)?(eно|ение)?|Редактор-составитель|Пересказ(ал)?|Записал(а)?|Запись|Подготовка текста|Пояснит|Авт|Слова|Музыка|[(]?Текст|Сюжет|Постановка|Режиссерские)[.,]?\s+.+)\s*)'
+    EDITORIAL = r'([(]?(?<editorial>(/:|Ред[.]?(-сост[.])?|Под ред(акц)?(ией)?|Под общ(ей|[.]) ред(акц)?|Редакц(ия)?|Редколлегия:|Науч|Предисловие|С предисл|Со (вступ. )?статьей|Со вступительной|Статья|Пред(исл)?|Примеч([.]|ания)?|Комментарии|Вступ(ит)?(ельн(ая|ый))?|С приложением|Послесл(овие)?|Сост(авил|авила|авили|авитель|авлено|авление|[.])?[:]?|Обр(аб)?(отка|отал)?|Перев(од)?(ы)?|Перевел(а|и)?|Пер(ераб)?|[Вв] (пер|обработке)|В обраб|Лит|Литобработка|В изложении|В сокращении|В пересказе|Пересказал(а|и)?|Переделка с|Вольный пер(евод)?|Сокращенный пер(евод)?|Собрал|Авториз(ов)?(анный)?|Сокр(ащ)?(eно|ение)?|Редактор-составитель|Пересказ(ал)?|Записал(а)?|Запись|Подготовка текста|Подгот[.]?|Пояснит|Авт|Слова|Музыка|[(]?Текст|Сюжет|Постановка|Режиссерские|Беседу ведет)[.,]?\s+.+)\s*)'
     ADDON = r'((?<editorial>((::|Вып|Изд|Ч|Кн|Издание)[.,]?(\s+[^ ]+){1,4}|В\s+[^ ]+\s+вып(усках|[.])))[.]?\s*.*)'
     SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
     LANG = r'((?<editorial>На\s+.+?яз[.]?|С\s+.+?словарем)[.,]?\s*.*)'
