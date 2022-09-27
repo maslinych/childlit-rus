@@ -861,11 +861,11 @@ def extract_addressee(rec, verbose=False):
         rec['addressee'] = 'для ' + has_tail_paren.group('age').strip()
         rec.tail = ' '.join([has_tail_paren.group('head'), has_tail_paren.group('tail')])
         return rec
-    ADDR_SLASH = r'[Дд]ля(?<age>[^/]+)воз[*-]?\s*ра[-]?с[-]?т[^/ ]+?\s*/'
-    title_slash = re.compile(r'(?<head>.*?)' + ADDR_SLASH + r'(?<tail>.*)$', re.U)
+    ADDR_SLASH = r'[Дд]л[яи](?<age>[^/]+)во[зэ][*-]?\s*ра[-]?с[-]?[тг][^/ ]+?\s*/'
+    title_slash = re.compile(r'(?<head>.+?)' + ADDR_SLASH + r'(?<tail>.*)$', re.U)
     has_title_slash = title_slash.match(rec['title'])
-    ADDR_GENERAL = r'[Дд]ля(?<age>[^)\p{Lu}]+?)?воз[*-]?\s*ра[-]?с[-]?т[^/ ]+?\s*[:]?'
-    title_general = re.compile(r'(?<head>.*?)' + ADDR_GENERAL + r'(?<tail>.*)$', re.U)
+    ADDR_GENERAL = r'[Дд]л[яи](?<age>[^)\p{Lu}]+?)?во[зэ][*-]?\s*ра[-]?с[-]?[тг][ ]?[^/ ]+?\s*[:]?'
+    title_general = re.compile(r'(?<head>.+?)' + ADDR_GENERAL + r'(?<tail>.*)$', re.U)
     has_title_general = title_general.match(rec['title'])
     has_in_series = title_general.match(rec['series'])
     if has_title_slash:
@@ -890,12 +890,28 @@ def parse_title(rec, verbose=False):
     SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
     LANG = r'((?<editorial>На\s+.+?яз[.]?|С\s+.+?словарем)[.,]?\s*.*)'
     TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + EDITORIAL + '|' + ILL + '|' + SOURCE + '|' + ADDON + '|' + LANG + ')?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + '|' + ADDON + '|' + LANG + ')?' + ')' + '[ .,:]*$'
-    re_1vol = re.compile(TITLE_1VOL, re.U)
-    has_title_1vol = re_1vol.match(rec['title'])
-    if has_title_1vol:
-        rec['title'] = has_title_1vol.group('maintitle')
-        rec['subtitle'] = has_title_1vol.group('subtitle')
-        rec['editorial'] = has_title_1vol.group('editorial') or ''
+    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9])[^:/]+)[.]?\s*' + ':?\s*' + r'((?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^:/]+)[.]?\s*' + ':\s*' + r'(?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+)[.:]?\s*'
+    try:
+        is_gost = int(rec['year']) >= 1972
+    except ValueError:
+        if '/' in rec['title'] and not re.search('/:', rec['title']):
+            is_gost = True
+        else:
+            is_gost = False
+    if is_gost: #  or '/' in rec['title'] and not '/:' in rec['title']
+        re_gost = re.compile(TITLE_GOST, re.U)
+        has_title_gost = re_gost.match(rec['title'])
+        if has_title_gost:
+            rec['title'] = has_title_gost.group('maintitle')
+            rec['subtitle'] = has_title_gost.group('subtitle')
+            rec['editorial'] = has_title_gost.group('editorial') or ''
+    else:
+        re_1vol = re.compile(TITLE_1VOL, re.U)
+        has_title_1vol = re_1vol.match(rec['title'])
+        if has_title_1vol:
+            rec['title'] = has_title_1vol.group('maintitle')
+            rec['subtitle'] = has_title_1vol.group('subtitle')
+            rec['editorial'] = has_title_1vol.group('editorial') or ''
         # addon = has_title_1vol.group('addon')
         # if addon:
         #     try:
