@@ -861,7 +861,7 @@ def extract_addressee(rec, verbose=False):
         rec['addressee'] = 'для ' + has_tail_paren.group('age').strip()
         rec.tail = ' '.join([has_tail_paren.group('head'), has_tail_paren.group('tail')])
         return rec
-    ADDR_SLASH = r'[Дд]л[яи](?<age>[^/]+)во[зэ][*-]?\s*ра[-]?с[-]?[тг][^/ ]+?\s*/'
+    ADDR_SLASH = r'([Дд]ля|(?<= )[Дд]ли(?= ))(?<age>[^/]+)во[зэ][*-]?\s*ра[-]?с[-]?[тг][^/ ]+?\s*/'
     title_slash = re.compile(r'(?<head>.+?)' + ADDR_SLASH + r'(?<tail>.*)$', re.U)
     has_title_slash = title_slash.match(rec['title'])
     ADDR_GENERAL = r'[Дд]л[яи](?<age>[^)\p{Lu}]+?)?во[зэ][*-]?\s*ра[-]?с[-]?[тг][ ]?[^/ ]+?\s*[:]?'
@@ -890,7 +890,7 @@ def parse_title(rec, verbose=False):
     SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
     LANG = r'((?<editorial>На\s+.+?яз[.]?|С\s+.+?словарем)[.,]?\s*.*)'
     TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + EDITORIAL + '|' + ILL + '|' + SOURCE + '|' + ADDON + '|' + LANG + ')?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + '|' + ADDON + '|' + LANG + ')?' + ')' + '[ .,:]*$'
-    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9])[^/:]+?)[.:]?\s*' + '(:[\s.]*' + r'(?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^/:]+)[.]?\s*' + ':[\s.]*' + r'(?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+)[.:]?\s*'
+    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9])[^/:]+?(:\s+\p{Ll}[^/:]+?)?)[.:]?\s*' + '(:[\s.]*' + r'(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^/:]+)[.]?\s*' + ':[ .]*' + r'(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^:/]+)[.]?\s*$' + '|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^/:]+?:[^/:]+?)\s*:[\s.]*(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^/]+)\s*' + '/\s*(?<editorial>.*$)?'
     try:
         is_gost = int(rec['year']) >= 1972
     except ValueError:
