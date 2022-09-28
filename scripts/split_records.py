@@ -890,7 +890,7 @@ def parse_title(rec, verbose=False):
     SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
     LANG = r'((?<editorial>На\s+.+?яз[.]?|С\s+.+?словарем)[.,]?\s*.*)'
     TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + EDITORIAL + '|' + ILL + '|' + SOURCE + '|' + ADDON + '|' + LANG + ')?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + '|' + ADDON + '|' + LANG + ')?' + ')' + '[ .,:]*$'
-    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9])[^:/]+)[.]?\s*' + ':?\s*' + r'((?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^:/]+)[.]?\s*' + ':\s*' + r'(?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+)[.:]?\s*'
+    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9])[^/:]+?)[.:]?\s*' + '(:[\s.]*' + r'(?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^/:]+)[.]?\s*' + ':[\s.]*' + r'(?<subtitle>([\p{Lu}([]|в\s+[0-9])[^:/]+)[.:]?\s*'
     try:
         is_gost = int(rec['year']) >= 1972
     except ValueError:
