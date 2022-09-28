@@ -718,7 +718,7 @@ def extract_title(rec, prev=None, verbose=False):
             rec['publisher'] = is_breakable.group('publisher').strip(' .,')
             rec['year'] = is_breakable.group('year')
             try:
-                rec['titleaddon'] = the_same_hascity.group('alltitle').strip(' ,.')
+                rec['titleaddon'] = the_same_hascity.group('alltitle').strip(' .,')
                 rec['title'] = ' : '.join([rec['maintitle'], rec['titleaddon']])
             except AttributeError:
                 pass
@@ -745,13 +745,13 @@ def extract_title(rec, prev=None, verbose=False):
     elif hascity:
         if verbose:
             print("hascity:", hascity.groupdict())
-        rec['maintitle'] = hascity.group('alltitle').strip(' ,.—-')
+        rec['maintitle'] = hascity.group('alltitle').strip(' ,—-')
         rec['city'] = format_multi_cities(hascity.group('city'))
-        rec['publisher'] = hascity.group('publisher').strip(' .,')
+        rec['publisher'] = hascity.group('publisher').strip(' ,')
         rec['year'] = hascity.group('year')
         rec.tail = hascity.group('tail')
     elif is_ref:
-        rec['maintitle'] = is_ref.group('alltitle').strip(' ,.—-')
+        rec['maintitle'] = is_ref.group('alltitle').strip(' ,—-')
         rec['ref'] = is_ref.group('ref')
         rec['city'] = 'REF' + rec['ref']
         rec['publisher'] = ''
@@ -882,7 +882,7 @@ def extract_addressee(rec, verbose=False):
 
 def parse_title(rec, verbose=False):
     """Extract genre/subtitle and editorial info from a title string"""
-    TITLE = r'(?<maintitle>(\p{Lu}|[«"0-9]).+?)[.?!]?\s*'
+    TITLE = r'(?<maintitle>(\p{Lu}|[«"0-9]||[.][.][.]\s*[\p{Ll}\p{Lu}]).+?)[.?!]?\s*'
     SUBTITLE = r'(([({](?<subtitle>«?\p{Lu}[^)]+[^.])[.]?[)}]\s*|(?<=[.])\s+(?<subtitle>\p{Lu}[^()]+?[^.]))[.]?\s*)'
     ILL = r'((?<editorial>((Рис|Ил-?л(юстр)?[.]?|Обл[.]?|Фотограф|Худ(ож)?н?|Оформл|С\s+фотоилл|Общ)[.,]|Грав([.]|юры)?|Автолитографи[ия]|Линогравюры|Силуэты|Картинки|Оформление|Фотомонтаж|Фотоиллюстрации|С\s+фотоиллюстрациями|Фото|Портрет|Переплет[,]?|Обложка[,]?|Супер-обложка|Художники?|Художественное)\s+.+)\s*)'
     EDITORIAL = r'([(]?(?<editorial>(/:|Ред[.]?(-сост[.])?|Под ред(акц)?(ией)?|Под общ(ей|[.]) ред(акц)?|Редакц(ия)?|Редколлегия:|Науч|Предисловие|С предисл|Со (вступ. )?статьей|Со вступительной|Статья|Пред(исл)?|Примеч([.]|ания)?|Коммент(арии)?|Вступ(ит)?(ельн(ая|ый))?|С приложением|Послесл(овие)?|Сост(авил|авила|авили|авитель|авлено|авление|[.])?[:]?|Обр(аб)?(отка|отал|отала)?|Перев(од)?(ы)?|Перевел(а|и)?|Пер(ераб)?|[Вв] (пер|обработке)|В обраб|Лит|Литобработка|В изложении|В сокращении|В пересказе|Пересказал(а|и)?|Переделка с|Вольный пер(евод)?|Сокращенный пер(евод)?|Собрал|Авториз(ов)?(анный)?|Сокр(ащ)?(eно|ение)?|Редактор-составитель|Пересказ(ал|ала)?|Рассказал(а)?|Записал(а)?|Запись|Подготовка текста|Подгот[.]?|Пояснит|Авт|Слова|Музыка|[(]?Текст|Сюжет|Постановка|Режиссерские|Беседу ведет)[.,]?\s+.+)\s*)'
@@ -890,7 +890,7 @@ def parse_title(rec, verbose=False):
     SOURCE = r'(?<editorial>[(]По\s+[^)]+[)])'
     LANG = r'((?<editorial>На\s+.+?яз[.]?|С\s+.+?словарем)[.,]?\s*.*)'
     TITLE_1VOL = r'(' + TITLE + SUBTITLE + '?' + '(' + EDITORIAL + '|' + ILL + '|' + SOURCE + '|' + ADDON + '|' + LANG + ')?' +  '|' + TITLE + SUBTITLE + '(' + ILL + '|' + EDITORIAL + '|' + ADDON + '|' + LANG + ')?' + ')' + '[ .,:]*$'
-    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9])[^/:]+?(:\s+\p{Ll}[^/:]+?)?)[.:]?\s*' + '(:[\s.]*' + r'(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^/:]+)[.]?\s*' + ':[ .]*' + r'(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^:/]+)[.]?\s*$' + '|' + '(?<maintitle>(\p{Lu}|[«"0-9])[^/:]+?:[^/:]+?)\s*:[\s.]*(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^/]+)\s*' + '/\s*(?<editorial>.*$)?'
+    TITLE_GOST = r'((?<maintitle>(\p{Lu}|[«"0-9]|[.][.][.]\s*[\p{Ll}\p{Lu}])[^/:]+?(:\s+\p{Ll}[^/:]+?)?)[.:]?\s*' + '(:[\s.]*' + r'(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^:/]+?)[.:]?\s*' + ')?/\s*' + '(?<editorial>.*$))|' + '(?<maintitle>(\p{Lu}|[«"0-9]||[.][.][.]\s*[\p{Ll}\p{Lu}])[^/:]+)[.]?\s*' + ':[ .]*' + r'(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^:/]+)[.]?\s*$' + '|' + '(?<maintitle>(\p{Lu}|[«"0-9]||[.][.][.]\s*[\p{Ll}\p{Lu}])[^/:]+?:[^/:]+?)\s*:[\s.]*(?<subtitle>([\p{Lu}0-9([«]|в\s+[0-9])[^/]+)\s*' + '/\s*(?<editorial>.*$)?'
     try:
         is_gost = int(rec['year']) >= 1972
     except ValueError:
