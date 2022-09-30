@@ -899,8 +899,13 @@ def parse_title(rec, verbose=False):
         else:
             is_gost = False
     if is_gost: #  or '/' in rec['title'] and not '/:' in rec['title']
-        re_gost = re.compile(TITLE_GOST, re.U)
-        has_title_gost = re_gost.match(rec['title'])
+        if rec['title'].count(':') >= 3:
+            SPLIT = r'(?<maintitle>[^:]+?)[.]?\s*:\s*(?<subtitle>[^/]+)(/\s*(?<editorial>.*))?$'
+            gost_split = re.compile(SPLIT, re.U)
+            has_title_gost = gost_split.match(rec['title'])
+        else:    
+            re_gost = re.compile(TITLE_GOST, re.U)
+            has_title_gost = re_gost.match(rec['title'])
         if has_title_gost:
             rec['title'] = has_title_gost.group('maintitle')
             rec['subtitle'] = has_title_gost.group('subtitle')
