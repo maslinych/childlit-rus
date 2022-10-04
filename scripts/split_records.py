@@ -436,7 +436,7 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
-                       'subtitle', 'editorial', 'bibaddon', 'city', 'publisher',
+                       'subtitle', 'editorial', 'thesame', 'titleaddon', 'bibaddon', 'city', 'publisher',
                        'year', 'series', 'pages', 'printrun', 'price',
                        'addressee', 'tail', 'section']
 
@@ -447,6 +447,13 @@ class Record(dict):
         out['tail'] = self.tail
         out.update(self)
         return out
+
+    @property
+    def isthesame(self):
+        try:
+            return self['thesame'] == 'THESAME'
+        except KeyError:
+            return False
 
 
 def extract_number(line):
@@ -686,62 +693,29 @@ def format_multi_cities(cities):
     return "; ".join(out)
 
 
-def extract_title(rec, prev=None, verbose=False):
+def split_title_at_city(tail):
     """break record into title-related part and publication data using city as a hint"""
     INFO = r'(?<city>(' + CITY + r')(\s?(;|—-?)\s?(' + CITY + r')){0,4})[.,:](?<publisher>.*?)\s+(?<year>19[1-8][0-9]|[Бб]\.\s+г\.|[Бб]/г\.?)[\p{P}\s](\s*—\s*)?(?<tail>.*)$'
-    if '@' in rec.tail:
+    if '@' in tail:
         break_at_city = re.compile(r'(?<alltitle>[^@]+\s+)@\s*' +
                                    INFO, re.U | re.VERBOSE)
     else:
         break_at_city = re.compile(r'(?<alltitle>([\p{Lu}\d«(i№]|\.\.\.).+?[,.)?!—-])\s*'
-                   + INFO, re.U | re.VERBOSE )
-    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>((?<addon>[^@]+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*))$', re.U | re.VERBOSE)
+                   + INFO, re.U | re.VERBOSE)
+    return break_at_city.match(tail)
+
+
+def extract_title(rec, verbose=False):
+    the_same = re.compile(r'(?<alltitle>Т\s*о\s*ж\s*е\s*[.,])(?<remainder>.*)$')
     ref = re.compile(r'(?<alltitle>.+)\s+[(]?См\.\s*№?\s*(?<ref>[1-9][0-9]{0,4})\s*[)]?\.?$')
-    hascity = break_at_city.match(rec.tail)
+    hascity = split_title_at_city(rec.tail)
     is_the_same = the_same.match(rec.tail)
     is_ref = ref.match(rec.tail)
     if is_the_same:
         # то же
-        the_same_hascity = break_at_city.match(is_the_same.group('remainder').strip())
-        rec['maintitle'] = prev['maintitle']
-        if verbose:
-            print("is_the_same", is_the_same.groupdict())
-            print("hascity", hascity.groupdict())
-        if hascity and is_the_same.group('alltitle') == hascity.group('alltitle'):
-            is_breakable = hascity
-        else:
-            is_breakable = the_same_hascity
-        if is_breakable:
-            if verbose:
-                print("is_breakable:", is_breakable.groupdict())
-            rec['city'] = format_multi_cities(is_breakable.group('city'))
-            rec['publisher'] = is_breakable.group('publisher').strip(' .,')
-            rec['year'] = is_breakable.group('year')
-            try:
-                rec['titleaddon'] = the_same_hascity.group('alltitle').strip(' .,')
-                rec['title'] = ' : '.join([rec['maintitle'], rec['titleaddon']])
-            except AttributeError:
-                pass
-            rec.tail = is_breakable.group('tail')
-        else:
-            if verbose:
-                print("is_breakable FALSE", is_the_same.groupdict())
-            rec['city'] = prev['city']
-            rec['publisher'] = prev['publisher']
-            if is_the_same.group('year'):
-                rec['year'] = is_the_same.group('year')
-                addon = is_the_same.group('addon')
-                if addon:
-                    rec['titleaddon'] = addon.strip(' ,.')
-                    rec['title'] = ' : '.join([rec['maintitle'], rec['titleaddon']])
-            else:
-                rec['year'] = prev['year']
-            rec.tail = is_the_same.group('tail')
-        # populate current record with fields from previous rec,
-        # in case there's no such field already filled
-        for k, v in prev.items():
-            if k not in rec:
-                rec[k] = v
+        rec['thesame'] = 'THESAME'
+        rec.tail = is_the_same.group('remainder')
+        return rec
     elif hascity:
         if verbose:
             print("hascity:", hascity.groupdict())
@@ -768,6 +742,38 @@ def extract_title(rec, prev=None, verbose=False):
         rec['year'] = int(rec['year'])
     except ValueError:
         rec['year'] = 'NA'
+    rec['thesame'] = ''
+    return rec
+
+
+def process_the_same(rec, prev, verbose=False):
+    """Process records with type SAME"""
+    the_same_addon = re.compile(r'((?<addon>[^@]+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*)$', re.U | re.VERBOSE)
+    has_the_same_addon = the_same_addon.match(rec.tail)
+    hascity = split_title_at_city('. '.join(['TITLE', rec.tail.strip()]))
+    if verbose:
+        print("is_the_same", has_the_same_addon.groupdict())
+        print("hascity", hascity.groupdict())
+    if hascity:
+        rec['city'] = format_multi_cities(hascity.group('city'))
+        rec['publisher'] = hascity.group('publisher').strip(' .,')
+        rec['year'] = hascity.group('year')
+        has_addon = re.match(r'TITLE.\s+(?<addon>.+)$', hascity.group('alltitle'))
+        if has_addon:
+            rec['titleaddon'] = has_addon.group('addon').strip(' .,')
+        rec.tail = hascity.group('tail')
+    else:
+        if has_the_same_addon.group('year'):
+            rec['year'] = has_the_same_addon.group('year')
+            addon = has_the_same_addon.group('addon')
+            if addon:
+                rec['titleaddon'] = addon.strip(' ,.')
+        rec.tail = has_the_same_addon.group('tail')
+    # populate current record with fields from previous rec,
+    # in case there's no such field already filled
+    for k, v in prev.items():
+        if k not in rec:
+            rec[k] = v
     return rec
 
 
@@ -951,11 +957,14 @@ def main():
     for rec in iter_records(numbered_lines(args.infile)):
         row = extract_author(rec, author, verbose=args.verbose)
         author = row['author']
-        row = extract_title(row, titlerec, verbose=args.verbose)
-        titlerec = row
+        row = extract_title(row, verbose=args.verbose)
+        if row.isthesame:
+            row = process_the_same(row, titlerec, verbose=args.verbose)
         row = extract_printinfo(row, verbose=args.verbose)
         row = extract_addressee(row, verbose=args.verbose)
-        row = parse_title(row, verbose=args.verbose)
+        if not row.isthesame:
+            row = parse_title(row, verbose=args.verbose)
+        titlerec = row
         csv_writer.writerow(row.serialize())
 
 
