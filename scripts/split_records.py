@@ -748,26 +748,28 @@ def extract_title(rec, verbose=False):
 
 def process_the_same(rec, prev, verbose=False):
     """Process records with type SAME"""
+    delimiter = re.compile(r'(?<subtitle>[^/]+)\s*/:?\s*(?<tail>.*)')
+    has_delimiter = delimiter.match(rec.tail)
+    if has_delimiter:
+        rec['subtitle'] = has_delimiter.group('subtitle')
+        rec.tail = has_delimiter.group('tail')
     the_same_addon = re.compile(r'((?<addon>[^@]+?)?(\s*—\s*)?(?<year>19[1-8][0-9]|[Бб]\.\s+г\.))?(?<tail>.*)$', re.U | re.VERBOSE)
     has_the_same_addon = the_same_addon.match(rec.tail)
     hascity = split_title_at_city('. '.join(['TITLE', rec.tail.strip()]))
-    if verbose:
-        print("is_the_same", has_the_same_addon.groupdict())
-        print("hascity", hascity.groupdict())
     if hascity:
         rec['city'] = format_multi_cities(hascity.group('city'))
         rec['publisher'] = hascity.group('publisher').strip(' .,')
         rec['year'] = hascity.group('year')
         has_addon = re.match(r'TITLE.\s+(?<addon>.+)$', hascity.group('alltitle'))
         if has_addon:
-            rec['titleaddon'] = has_addon.group('addon').strip(' .,')
+            rec['titleaddon'] = has_addon.group('addon').strip(' .,—')
         rec.tail = hascity.group('tail')
     else:
         if has_the_same_addon.group('year'):
             rec['year'] = has_the_same_addon.group('year')
             addon = has_the_same_addon.group('addon')
             if addon:
-                rec['titleaddon'] = addon.strip(' ,.')
+                rec['titleaddon'] = addon.strip(' ,.—')
         rec.tail = has_the_same_addon.group('tail')
     # populate current record with fields from previous rec,
     # in case there's no such field already filled
@@ -962,7 +964,14 @@ def main():
             row = process_the_same(row, titlerec, verbose=args.verbose)
         row = extract_printinfo(row, verbose=args.verbose)
         row = extract_addressee(row, verbose=args.verbose)
-        if not row.isthesame:
+        if row.isthesame:
+            for k, v in row.items():
+                try:
+                    if row[k].startswith('NO') and titlerec[k]:
+                        row[k] = titlerec[k]
+                except AttributeError:
+                    pass
+        else:
             row = parse_title(row, verbose=args.verbose)
         titlerec = row
         csv_writer.writerow(row.serialize())
