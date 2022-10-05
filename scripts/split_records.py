@@ -934,6 +934,18 @@ def parse_title(rec, verbose=False):
     return rec
 
 
+def retry_series(rec, verbose=False):
+    """Retry to find series in record tail after processing"""
+    series_paren = r'^[\s—.]*[(](?<series>[«\p{Lu}][^)]+?) ?[)](?<tail>.*)$'
+    has_series = re.match(series_paren, rec.tail)
+    if has_series and rec['series'] == 'NOSERIES':
+        if verbose:
+            print('RETRY: %s %s' % (rec['num'], has_series.groupdict()))
+        rec['series'] = has_series.group('series')
+        rec.tail = has_series.group('tail')
+    return rec
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Split scanned txt file into numbered records (CSV)', epilog=""" The idea is to rely on the sequentially numbered items. The script
 identifies all lines that look like a numbered item. All non-itemlike
@@ -973,6 +985,7 @@ def main():
                     pass
         else:
             row = parse_title(row, verbose=args.verbose)
+        row = retry_series(row, verbose=args.verbose)
         titlerec = row
         csv_writer.writerow(row.serialize())
 
