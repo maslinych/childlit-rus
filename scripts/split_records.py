@@ -436,9 +436,9 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
-                       'subtitle', 'editorial', 'thesame', 'titleaddon', 'bibaddon', 'city', 'publisher',
+                       'subtitle', 'editorial', 'bibaddon', 'city', 'publisher',
                        'year', 'series', 'pages', 'printrun', 'price',
-                       'addressee', 'tail', 'section']
+                       'addressee', 'tail', 'section', 'thesame']
 
     def serialize(self):
         out = {}
@@ -762,14 +762,14 @@ def process_the_same(rec, prev, verbose=False):
         rec['year'] = hascity.group('year')
         has_addon = re.match(r'TITLE.\s+(?<addon>.+)$', hascity.group('alltitle'))
         if has_addon:
-            rec['titleaddon'] = has_addon.group('addon').strip(' .,—')
+            rec['editorial'] = has_addon.group('addon').strip(' .,—')
         rec.tail = hascity.group('tail')
     else:
         if has_the_same_addon.group('year'):
             rec['year'] = has_the_same_addon.group('year')
             addon = has_the_same_addon.group('addon')
             if addon:
-                rec['titleaddon'] = addon.strip(' ,.—')
+                rec['editorial'] = addon.strip(' ,.—')
         rec.tail = has_the_same_addon.group('tail')
     # populate current record with fields from previous rec,
     # in case there's no such field already filled
