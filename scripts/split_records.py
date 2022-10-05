@@ -436,9 +436,9 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['start', 'end', 'num', 'author', 'title',
-                       'subtitle', 'editorial', 'bibaddon', 'city', 'publisher',
+                       'subtitle', 'editorial', 'city', 'publisher',
                        'year', 'series', 'pages', 'printrun', 'price',
-                       'addressee', 'tail', 'section', 'thesame']
+                       'addressee', 'tail', 'bibaddon', 'section', 'thesame']
 
     def serialize(self):
         out = {}
@@ -811,7 +811,7 @@ def extract_printinfo(rec, verbose=False):
     PAGES = r'(С[тг]р\.?\s+(?<pages>[0-9]+)(?<pagecomment>(\s+и)?\s+[0-9]+\s+л[.]\s+(черт|илл))?[,.]|(?<pages>[0-9]+)\s+лист(ов|а)?[.,])'
     PRINTRUN = r'(\s*[Тт][.]\s*(?<printrun>[1-9][0-9 Оо]+)[,.]?(\s*[(]((?<part>[0-9]+[ —-]+[0-9]+)\s+т(ыс)?\.|[1-9].+?завод.?(\s+.+?[0-9]+\s+т\.)?)[)]\.?)?)'
     PRICE = r'(\s*[Цц][.]\s+(?<price>((?<rub>[0-9]+)\s+[рР]\.)(\s*((?<kop>[0-9]+)\s+[кК]\.))?|((?<kop>[0-9]+)\s+[кК]\.)))'
-    SERIES = r'(\s*[(](?<series>\p{Lu}[^)]+?)\.?[)]\.?\s*)'
+    SERIES = r'(\s*[(](?<series>\p{Lu}[^)]+?)\.? ?[)]\.?\s*)'
     PR_EARLY = r'(' + SERIES + PAGES + PRINTRUN + '?' + PRICE + '?' + '|' + PAGES + SERIES + '?' + PRINTRUN + '?' + PRICE + '?' + '|' + PRINTRUN + PRICE + '?' + '|' + PRICE + ')'
     pr_1918 = re.compile(r'(?<head>.*?)' + PR_EARLY + r'(?<tail>.*)$', re.U)
     has_early = pr_1918.match(rec.tail)
@@ -862,17 +862,17 @@ def extract_printinfo(rec, verbose=False):
 
 def extract_addressee(rec, verbose=False):
     """Extract info on age of addresse from either tail or title"""
-    ADDR_PAREN = r'([(<](Д(ля)?|Для)(?<age>[^)]+?(возраст|детей|пионеров|школьников|подростков|маленьких|кл(асс|[.])(ов|а)?|школы)[^)]+?)[.]?|(?<age>(Ст|Cр|Мл|Дошк)[^)]+возр[.,]))[)]'
+    ADDR_PAREN = r'[({<]?(Для(?<age>[^)]+?(возраста|детей|пионеров|школьников|подростков|маленьких|юношества|кл(асс|[.])(ов|а)?|шк([.]|олы?)))[. ]?|(?<age>(Ст|Ср|Мл|Дошк)[^)]+возр[.,]))(?=[)])'
     paren_tail = re.compile(r'(?<head>.*?)' + ADDR_PAREN + r'(?<tail>.*)$', re.U)
     has_tail_paren = paren_tail.match(rec.tail)
     if has_tail_paren:
         rec['addressee'] = 'для ' + has_tail_paren.group('age').strip()
         rec.tail = ' '.join([has_tail_paren.group('head'), has_tail_paren.group('tail')])
         return rec
-    ADDR_SLASH = r'([Дд]ля|(?<= )[Дд]ли(?= ))(?<age>[^/]+)во[зэ][*-]?\s*ра[-]?с[-]?[тг][^/ ]+?\s*/'
+    ADDR_SLASH = r'([Дд]ля|(?<= )[Дд]ли(?= ))(?<age>[^/]+)(во[зэ][*-]?\s*ра[-]?с[-]?[тг]|кл[.]|шк([.]|олы?))[^/ ]+?\s*/'
     title_slash = re.compile(r'(?<head>.+?)' + ADDR_SLASH + r'(?<tail>.*)$', re.U)
     has_title_slash = title_slash.match(rec['title'])
-    ADDR_GENERAL = r'[Дд]л[яи](?<age>[^)\p{Lu}]+?)?во[зэ][*-]?\s*ра[-]?с[-]?[тг][ ]?[^/ ]+?\s*[:]?'
+    ADDR_GENERAL = r'[Дд]л[яи]((?<age>[^)\p{Lu}]+?)?во[зэ][*-]?\s*ра[-]?с[-]?[тг][ ]?|(?<age>[^)\p{Lu}]*?(юношества|подростков|школьников|детей|шк([.]|олы?)|кл(асс|[.])(ов|а)?)))[^/) ]+?\s*[:]?'
     title_general = re.compile(r'(?<head>.+?)' + ADDR_GENERAL + r'(?<tail>.*)$', re.U)
     has_title_general = title_general.match(rec['title'])
     has_in_series = title_general.match(rec['series'])
