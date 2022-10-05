@@ -438,7 +438,8 @@ class Record(dict):
         self.fields = ['start', 'end', 'num', 'author', 'title',
                        'subtitle', 'editorial', 'city', 'publisher',
                        'year', 'series', 'pages', 'printrun', 'price',
-                       'addressee', 'tail', 'bibaddon', 'section', 'thesame']
+                       'addressee', 'contents', 'tail', 'bibaddon',
+                       'section', 'thesame']
 
     def serialize(self):
         out = {}
@@ -936,13 +937,34 @@ def parse_title(rec, verbose=False):
 
 def retry_series(rec, verbose=False):
     """Retry to find series in record tail after processing"""
-    series_paren = r'^[\s—.]*[(](?<series>[«\p{Lu}][^)]+?) ?[)](?<tail>.*)$'
+    series_paren = r'^[ —.]*[(](?<series>[«\p{Lu}][^)]+?) ?[)](?<tail>.*)$'
     has_series = re.match(series_paren, rec.tail)
     if has_series and rec['series'] == 'NOSERIES':
         if verbose:
             print('RETRY: %s %s' % (rec['num'], has_series.groupdict()))
         rec['series'] = has_series.group('series')
         rec.tail = has_series.group('tail')
+    return rec
+
+
+def extract_contents(rec, verbose=False):
+    """Extract the contents of the work, if present"""
+    CONTENTS = r'С\s*о\s*д\s*е\s*р\s*ж\s*([.]?:|и|ание:)\s+(?<contents>.+?)[.]?\s*'
+    contents_re = re.compile(r'(?<head>.*?)' + '(' + CONTENTS + '(?<tail>Р\s*е\s*ц[.]?:?\s+.*)$' + '|' + CONTENTS + '$' + ')', re.U)
+    has_contents = contents_re.match(rec.tail)
+    items = []
+    if has_contents:
+        for item in re.split(r'[.]\s*—\s*|;\s+|Повести:|Рассказы:', has_contents.group('contents').strip('.')):
+            m = re.match(r'(?<title>.+?)([.]?\s+(Рис[,.]?|Инсценировка)\s+|/.+).*$', item, re.U)
+            if m:
+                item = m.group('title')
+            items.append(item)
+        rec['contents'] = '; '.join(items)
+        try:
+            tail = has_contents.group('tail')
+            rec.tail = ''.join([has_contents.group('head'), tail])
+        except TypeError:
+            rec.tail = has_contents.group('head')
     return rec
 
 
@@ -986,6 +1008,7 @@ def main():
         else:
             row = parse_title(row, verbose=args.verbose)
         row = retry_series(row, verbose=args.verbose)
+        row = extract_contents(row, verbose=args.verbose)
         titlerec = row
         csv_writer.writerow(row.serialize())
 
