@@ -841,7 +841,11 @@ def extract_printinfo(rec, verbose=False):
         rec['pages'] = has_early.group('pages') or 'NOPAGES'
         rec['printrun'] = normalize_printrun(has_early.group('printrun'), has_early.group('part')) or 'NOPRINTRUN'
         rec['price'] = normalize_price(has_early) or 'NOPRICE'
-        rec['series'] = has_early.group('series') or 'NOSERIES'
+        if has_early.group('series'):
+            series = has_early.group('series').strip('.')
+        else:
+            series = 'NOSERIES'
+        rec['series'] = series
         rec.tail = ' '.join([has_early.group('head'), has_early.group('tail')])
     elif has_late:
         if verbose:
@@ -849,7 +853,11 @@ def extract_printinfo(rec, verbose=False):
         rec['pages'] = has_late.group('pages') or 'NOPAGES'
         rec['printrun'] = normalize_printrun(has_late.group('printrun'), has_late.group('part')) or 'NOPRINTRUN'
         rec['price'] = normalize_price(has_late) or 'NOPRICE'
-        rec['series'] = has_late.group('series') or 'NOSERIES'
+        if has_late.group('series'):
+            series = has_late.group('series').strip('.')
+        else:
+            series = 'NOSERIES'
+        rec['series'] = series
         rec['bibaddon'] = has_late.group('dop') or ''
         rec.tail = ' '.join([has_late.group('head'), has_late.group('tail')])        
     else:
@@ -932,6 +940,8 @@ def parse_title(rec, verbose=False):
         #         rec['bibaddon'] = ' :: '.join([rec['bibaddon'], addon])
         #     except KeyError:
         #         rec['bibaddon'] = addon
+    rec['title'] = '; '.join(re.split(r'[.]\s*—\s*', rec['title']))
+    rec['subtitle'] = '; '.join(re.split(r'[.]\s*—\s*', rec['subtitle']))
     return rec
 
 
@@ -939,17 +949,18 @@ def retry_series(rec, verbose=False):
     """Retry to find series in record tail after processing"""
     series_paren = r'^[ —.]*[(](?<series>[«\p{Lu}][^)]+?) ?[)](?<tail>.*)$'
     has_series = re.match(series_paren, rec.tail)
-    if has_series and rec['series'] == 'NOSERIES':
-        if verbose:
-            print('RETRY: %s %s' % (rec['num'], has_series.groupdict()))
-        rec['series'] = has_series.group('series')
-        rec.tail = has_series.group('tail')
+    if has_series:
+        if rec['series'] == 'NOSERIES' or rec.isthesame:
+            if verbose:
+                print('RETRY: %s %s' % (rec['num'], has_series.groupdict()))
+            rec['series'] = has_series.group('series').strip('.')
+            rec.tail = has_series.group('tail')
     return rec
 
 
 def extract_contents(rec, verbose=False):
     """Extract the contents of the work, if present"""
-    CONTENTS = r'С\s*о\s*д\s*е\s*р\s*ж\s*([.]?:|и|ание:)\s+(?<contents>.+?)[.]?\s*'
+    CONTENTS = r'С\s*о\s*д\s*е\s*р\s*ж\s*([.]?\s*:|и|ание:)\s+(?<contents>.+?)[.]?\s*'
     contents_re = re.compile(r'(?<head>.*?)' + '(' + CONTENTS + '(?<tail>Р\s*е\s*ц[.]?:?\s+.*)$' + '|' + CONTENTS + '$' + ')', re.U)
     has_contents = contents_re.match(rec.tail)
     items = []
@@ -999,6 +1010,7 @@ def main():
         row = extract_author(rec, author, verbose=args.verbose)
         author = row['author']
         row = extract_title(row, verbose=args.verbose)
+        row = extract_contents(row, verbose=args.verbose)
         if row.isthesame:
             row = process_the_same(row, titlerec, verbose=args.verbose)
         row = extract_printinfo(row, verbose=args.verbose)
@@ -1013,7 +1025,6 @@ def main():
         else:
             row = parse_title(row, verbose=args.verbose)
         row = retry_series(row, verbose=args.verbose)
-        row = extract_contents(row, verbose=args.verbose)
         titlerec = row
         csv_writer.writerow(row.serialize())
 
