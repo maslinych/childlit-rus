@@ -874,7 +874,7 @@ def extract_addressee(rec, verbose=False):
     title_slash = re.compile(r'(?<head>.+?)' + ADDR_SLASH + r'(?<tail>.*)$', re.U)
     has_title_slash = title_slash.match(rec['title'])
     ADDR_GENERAL = r'[Дд]л[яи]((?<age>[^)\p{Lu}]+?)?во[зэ][*-]?\s*ра[-]?с[-]?[тг][ ]?|(?<age>[^)\p{Lu}]*?(юношества|подростков|школьников|детей|шк([.]|олы?)|кл(асс|[.])(ов|а)?)))[^/) ]+?\s*[:]?'
-    title_general = re.compile(r'(?<head>.+?)' + ADDR_GENERAL + r'(?<tail>.*)$', re.U)
+    title_general = re.compile(r'^(?<head>.+?)' + ADDR_GENERAL + r'(?<tail>.*)$', re.U)
     has_title_general = title_general.match(rec['title'])
     has_in_series = title_general.match(rec['series'])
     if has_title_slash:
@@ -885,7 +885,7 @@ def extract_addressee(rec, verbose=False):
         rec['title'] = ' '.join([has_title_general.group('head'), has_title_general.group('tail')])
     elif has_in_series:
         rec['addressee'] = 'для ' + has_in_series.group('age').strip() + ' возраста'
-        rec['title'] = ' '.join([has_in_series.group('head'), has_in_series.group('tail')])
+        rec['series'] = ' '.join([has_in_series.group('head'), has_in_series.group('tail')])
     return rec
 
 
@@ -954,7 +954,12 @@ def extract_contents(rec, verbose=False):
     has_contents = contents_re.match(rec.tail)
     items = []
     if has_contents:
-        for item in re.split(r'[.]\s*—\s*|;\s+|Повести:|Рассказы:', has_contents.group('contents').strip('.')):
+        contents = has_contents.group('contents').strip('.')
+        if re.search(r'[.]\s*—\s*|;\s+', contents):
+            split_re = r'[.]\s*—\s*|;\s+'
+        else:
+            split_re = r'[.]\s+'
+        for item in re.split(split_re, contents):
             m = re.match(r'(?<title>.+?)([.]?\s+(Рис[,.]?|Инсценировка)\s+|/.+).*$', item, re.U)
             if m:
                 item = m.group('title')
