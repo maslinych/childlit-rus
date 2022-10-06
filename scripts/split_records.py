@@ -941,7 +941,10 @@ def parse_title(rec, verbose=False):
         #     except KeyError:
         #         rec['bibaddon'] = addon
     rec['title'] = '; '.join(re.split(r'[.]\s*—\s*', rec['title']))
-    rec['subtitle'] = '; '.join(re.split(r'[.]\s*—\s*', rec['subtitle']))
+    try:
+        rec['subtitle'] = '; '.join(re.split(r'[.]\s*—\s*', rec['subtitle']))
+    except (KeyError, TypeError):
+        pass
     return rec
 
 
