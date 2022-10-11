@@ -18,7 +18,10 @@ csv/%.rec.csv: txt/%.txt scripts/split_records.py
 results/ill/%_general_.csv: index/%.artists.txt index/%.authors.txt scripts/illustrators_network.R
 	Rscript scripts/illustrators_network.R -i $< -a index/$*.authors.txt -o $(@D) -y $*
 
-records: $(recfiles)
+csv/authors_disamb.csv: csv/all.rec.csv scripts/authors.R
+	Rscript scripts/authors.R
+
+records: $(recfiles) csv/all.rec.csv
 
 convert: $(txtfiles)
 
