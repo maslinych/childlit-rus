@@ -21,6 +21,9 @@ results/ill/%_general_.csv: index/%.artists.txt index/%.authors.txt scripts/illu
 csv/authors_disamb.csv: csv/all.rec.csv scripts/authors.R
 	Rscript scripts/authors.R
 
+csv/authors_joined.rec.csv: csv/all.rec.csv
+	Rscript scripts/disamb_authors.R
+
 records: $(recfiles) csv/all.rec.csv
 
 convert: $(txtfiles)
