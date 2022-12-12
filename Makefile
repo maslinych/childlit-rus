@@ -10,9 +10,11 @@ help:
 	@echo 'Usage:                                                                    '
 	@echo 'make records — split txt into CSV: one record in a row'
 
-all: convert
+all: csv/authors_joined.rec.csv
 
-csv/%.rec.csv: txt/%.txt scripts/split_records.py
+dataset: dataset/editions.csv
+
+csv/19%.rec.csv: txt/19%.txt scripts/split_records.py
 	python3 scripts/split_records.py $< $@
 
 results/ill/%_general_.csv: index/%.artists.txt index/%.authors.txt scripts/illustrators_network.R
@@ -23,6 +25,9 @@ csv/authors_disamb.csv: csv/all.rec.csv scripts/authors.R
 
 csv/authors_joined.rec.csv: csv/all.rec.csv
 	Rscript scripts/disamb_authors.R
+
+dataset/editions.csv: csv/authors_joined.rec.csv
+	Rscript scripts/export_editions.R -i $< -o $@
 
 records: $(recfiles) csv/all.rec.csv
 
