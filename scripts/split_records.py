@@ -5,6 +5,7 @@ import regex as re
 import csv
 import argparse
 import sys
+import os
 from string import Formatter
 
 AUTHOR_NAME = r"""
@@ -435,11 +436,11 @@ class Record(dict):
         self.tail = tail
         self.start = start
         self.end = end
-        self.fields = ['start', 'end', 'num', 'author', 'title',
+        self.fields = ['vol_id', 'num', 'author', 'title',
                        'subtitle', 'editorial', 'city', 'publisher',
                        'year', 'series', 'pages', 'printrun', 'price',
                        'addressee', 'contents', 'tail', 'bibaddon',
-                       'section', 'thesame']
+                       'section', 'thesame', 'start', 'end']
 
     def serialize(self):
         out = {}
@@ -457,6 +458,10 @@ class Record(dict):
             return False
 
 
+def get_volume_id(path):
+    return os.path.basename(path)[:-4]
+
+
 def extract_number(line):
     """Detect if a line matches a pattern for a numbered bibliography item
     Return a tuple with a number and a text line. If a line doesn't have the
@@ -471,17 +476,19 @@ def extract_number(line):
 
 def numbered_lines(infile):
     """Generator producing numbered lines as tuples"""
+    vol_id = get_volume_id(infile)
     section = ''
-    for lineno, line in enumerate(infile, start=1):
-        line = line.strip()
-        if line.startswith('#'):
-            if line.startswith('#END'):
-                break
-            else:
-                section = line
-        if line:
-            num, tail = extract_number(line)
-            yield (lineno, num, tail, section)
+    with open(infile, 'r') as f:
+        for lineno, line in enumerate(f, start=1):
+            line = line.strip()
+            if line.startswith('#'):
+                if line.startswith('#END'):
+                    break
+                else:
+                    section = line
+            if line:
+                num, tail = extract_number(line)
+                yield (lineno, num, tail, section, vol_id)
 
 
 def collect_sections(prev, sec):
@@ -521,7 +528,7 @@ attribute and start and end line numbers)
     stack = []
     startline = 0
     seclist = []
-    for lineno, n, txt, section in numlines:
+    for lineno, n, txt, section, vol_id in numlines:
         if n == 0:
             num = 0
             if seclist:
@@ -541,6 +548,7 @@ attribute and start and end line numbers)
                     rec.start = startline
                     rec.end = lineno - 1
                     rec['section'] = ' '.join(seclist)
+                    rec['vol_id'] = vol_id
                     yield rec
                     stack = []
                     startline = lineno
@@ -558,6 +566,7 @@ attribute and start and end line numbers)
                 rec.start = startline
                 rec.end = lineno - 1
                 rec['section'] = ' '.join(seclist)
+                rec['vol_id'] = vol_id
                 yield rec
                 stack = []
                 itemno += 1
@@ -566,6 +575,7 @@ attribute and start and end line numbers)
                     rec = Record(tail = 'MISSING', start = startline, end = lineno - 1)
                     rec['num'] = itemno
                     rec['section'] = ' '.join(seclist)
+                    rec['vol_id'] = vol_id
                     yield rec
                     itemno += 1
             itemno = num
@@ -583,6 +593,7 @@ attribute and start and end line numbers)
         rec.start = startline
         rec.end = lineno
         rec['section'] = section
+        rec['vol_id'] = vol_id
         yield rec
 
 
@@ -993,8 +1004,7 @@ identifies all lines that look like a numbered item. All non-itemlike
 lines are joined to the previous numbered line, until the next item in
 a sequence is encountered. When an expected next item is missing, a
 'MISSING' tag is printed in the output CSV file.""")
-    parser.add_argument('infile', nargs='?', help='Input file (txt)',
-                        type=argparse.FileType('r', encoding='UTF-8'), default=sys.stdin)
+    parser.add_argument('infile', nargs='?', help='Input file (txt)')
     parser.add_argument('outfile', nargs='?', help='Output file (csv)',
                         type=argparse.FileType('w', encoding='UTF-8'), default=sys.stdout)
     parser.add_argument('-v', '--verbose', help='Show regex debugging output',
