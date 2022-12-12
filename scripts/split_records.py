@@ -436,7 +436,7 @@ class Record(dict):
         self.tail = tail
         self.start = start
         self.end = end
-        self.fields = ['vol_id', 'num', 'author', 'title',
+        self.fields = ['vol', 'num', 'author', 'title',
                        'subtitle', 'editorial', 'city', 'publisher',
                        'year', 'series', 'pages', 'printrun', 'price',
                        'addressee', 'contents', 'tail', 'bibaddon',
@@ -476,7 +476,7 @@ def extract_number(line):
 
 def numbered_lines(infile):
     """Generator producing numbered lines as tuples"""
-    vol_id = get_volume_id(infile)
+    vol = get_volume_id(infile)
     section = ''
     with open(infile, 'r') as f:
         for lineno, line in enumerate(f, start=1):
@@ -488,7 +488,7 @@ def numbered_lines(infile):
                     section = line
             if line:
                 num, tail = extract_number(line)
-                yield (lineno, num, tail, section, vol_id)
+                yield (lineno, num, tail, section, vol)
 
 
 def collect_sections(prev, sec):
@@ -528,7 +528,7 @@ attribute and start and end line numbers)
     stack = []
     startline = 0
     seclist = []
-    for lineno, n, txt, section, vol_id in numlines:
+    for lineno, n, txt, section, vol in numlines:
         if n == 0:
             num = 0
             if seclist:
@@ -548,7 +548,7 @@ attribute and start and end line numbers)
                     rec.start = startline
                     rec.end = lineno - 1
                     rec['section'] = ' '.join(seclist)
-                    rec['vol_id'] = vol_id
+                    rec['vol'] = vol
                     yield rec
                     stack = []
                     startline = lineno
@@ -566,7 +566,7 @@ attribute and start and end line numbers)
                 rec.start = startline
                 rec.end = lineno - 1
                 rec['section'] = ' '.join(seclist)
-                rec['vol_id'] = vol_id
+                rec['vol'] = vol
                 yield rec
                 stack = []
                 itemno += 1
@@ -575,7 +575,7 @@ attribute and start and end line numbers)
                     rec = Record(tail = 'MISSING', start = startline, end = lineno - 1)
                     rec['num'] = itemno
                     rec['section'] = ' '.join(seclist)
-                    rec['vol_id'] = vol_id
+                    rec['vol'] = vol
                     yield rec
                     itemno += 1
             itemno = num
@@ -593,7 +593,7 @@ attribute and start and end line numbers)
         rec.start = startline
         rec.end = lineno
         rec['section'] = section
-        rec['vol_id'] = vol_id
+        rec['vol'] = vol
         yield rec
 
 
