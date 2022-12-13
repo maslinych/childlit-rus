@@ -2,6 +2,7 @@ suppressPackageStartupMessages(require(optparse))
 require(readr)
 require(dplyr)
 require(tidyr)
+require(stringr)
 
 option_list = list(
   make_option(c("-i", "--infile"), action="store", default=NA, type='character',
@@ -29,7 +30,8 @@ a.std <- d.a %>% group_by(vol, num) %>%
     summarise(author_std = paste(author_std, collapse="; "))
 
 d.out <- d %>% left_join(a.std) %>%
-    relocate(author_std, .after = author)
+    relocate(author_std, .after = author) %>%
+    filter(!str_detect(tail, "MISSING"))
 
 ## тест на несматченных авторов
 cat("Nonmatched author lists\n")
