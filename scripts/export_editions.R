@@ -17,9 +17,12 @@ opt = parse_args(OptionParser(option_list=option_list))
 d <- read_csv(opt$infile, na=c("NA", "NOPRICE", "NOPRINTRUN", "NOPAGES", "NOSERIES"))
 a <- read_csv(opt$authors)
 
+## тест на дубликаты в авторах
+a |> group_by(author) |> filter(n()>1) |> pull(author) |> unique()
+
 d.a <- d %>% select(vol, num, author) %>%
     separate_rows(author, sep="; ") %>%
-    left_join(select(a, author, author_std=match)) %>%
+    left_join(select(a, author, author_std=match), relationship = "many-to-one") %>%
     mutate(author_std = ifelse(author == "OTHERS", "OTHERS", author_std))
 
 ## тест на несматченных авторов
