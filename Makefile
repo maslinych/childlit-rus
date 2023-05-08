@@ -10,7 +10,7 @@ help:
 	@echo 'Usage:                                                                    '
 	@echo 'make records — split txt into CSV: one record in a row'
 
-all: csv/authors_joined.rec.csv
+all: csv/all.rec.csv
 
 dataset: dataset/editions.csv
 
