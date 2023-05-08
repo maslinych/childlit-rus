@@ -12,13 +12,16 @@ option_list = list(
   make_option(c("-a", "--authors"), action="store", default=NA, type='character',
               help="authors disamb file (authors_disamb.csv)"),
   make_option(c("-g", "--genres"), action="store", default=NA, type='character',
-              help="genres info file (genres.csv)")
+              help="genres info file (genres.csv)"),
+  make_option(c("-n", "--normalized"), action="store", default=NA, type='character',
+              help="normalized fields file (normalized_fields.csv)")
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
 d <- read_csv(opt$infile, na=c("NA", "NOPRICE", "NOPRINTRUN", "NOPAGES", "NOSERIES"))
 a <- read_csv(opt$authors)
 g <- read_csv(opt$genres)
+nf <- read_csv(opt$normalized)
 
 ## тест на дубликаты в авторах
 cat("Duplicate authors in disamb\n")
@@ -40,7 +43,11 @@ d.out <- d %>% left_join(a.std) %>%
     relocate(author_std, author_gender, .after = author) %>%
     filter(!str_detect(tail, "MISSING")) %>%
     left_join(select(g, vol, num, genre), relationship = "one-to-one") %>%
-    relocate(genre, .after = subtitle)
+    relocate(genre, .after = subtitle) %>%
+    select(-one_of(c('publisher', 'series', 'bibaddon', 'addressee'))) %>%
+    left_join(nf) %>%
+    select(vol, num, author, author_std, author_gender, title, subtitle, genre, editorial, city, publisher, year, series, pages, printrun, price, addressee, contents, tail, bibaddon, section, thesame, start, end)
+
 
 ## тест на несматченных авторов
 cat("Nonmatched author lists\n")

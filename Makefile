@@ -28,8 +28,8 @@ results/ill/%_general_.csv: index/%.artists.txt index/%.authors.txt scripts/illu
 csv/authors_joined.rec.csv: csv/all.rec.csv
 	Rscript scripts/disamb_authors.R
 
-dataset/editions.csv: csv/all.rec.csv csv/authors_disamb.csv csv/genres.csv scripts/export_editions.R
-	Rscript scripts/export_editions.R -i $< -o $@ -a csv/authors_disamb.csv -g csv/genres.csv
+dataset/editions.csv: csv/all.rec.csv csv/authors_disamb.csv csv/genres.csv csv/normalized_fields.csv scripts/export_editions.R
+	Rscript scripts/export_editions.R -i $< -o $@ -a csv/authors_disamb.csv -g csv/genres.csv -n csv/normalized_fields.csv
 
 records: $(recfiles) csv/all.rec.csv
 
