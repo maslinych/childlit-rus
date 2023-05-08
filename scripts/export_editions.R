@@ -18,6 +18,7 @@ d <- read_csv(opt$infile, na=c("NA", "NOPRICE", "NOPRINTRUN", "NOPAGES", "NOSERI
 a <- read_csv(opt$authors)
 
 ## тест на дубликаты в авторах
+cat("Duplicate authors in disamb\n")
 a |> group_by(author) |> filter(n()>1) |> pull(author) |> unique()
 
 d.a <- d %>% select(vol, num, author) %>%
