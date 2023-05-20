@@ -39,7 +39,7 @@ csv/all.rec.csv: $(recfiles)
 	head -1 $< > $@
 	tail -q -n +2 $^ >> $@
 
-test-dataset: dataset/tests/test.py dataset/editions.csv dataset/bibliography.csv
+test-dataset: dataset/tests/testdata.py dataset/editions.csv dataset/bibliography.csv
 	python3 $<
 
 
