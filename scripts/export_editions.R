@@ -45,8 +45,8 @@ d.out <- d %>% left_join(a.std) %>%
     left_join(select(g, vol, num, genre), relationship = "one-to-one") %>%
     relocate(genre, .after = subtitle) %>%
     select(-one_of(c('publisher', 'series', 'bibaddon', 'addressee'))) %>%
-    left_join(nf) %>%
-    select(vol, num, author, author_std, author_gender, title, subtitle, genre, editorial, city, publisher, year, series, pages, printrun, price, addressee, contents, tail, bibaddon, section, thesame, start, end)
+    left_join(select(nf, -one_of(c('author', 'title', 'subtitle'))), by=c('vol', 'num'), relationship="one-to-one") %>%
+    select(vol, num, author, author_std, author_gender, title, subtitle, genre, editorial, volume, city, publisher, year, series, pages, printrun, price, addressee, contents, tail, bibaddon, section, thesame, start, end)
 
 
 ## тест на несматченных авторов
@@ -54,4 +54,8 @@ cat("Nonmatched author lists\n")
 d.out %>% filter(author != "NOAUTHOR" & is.na(author_std))
 
 ## записываем результат
-write_csv(d.out, opt$outfile)
+write_csv(d.out, opt$outfile, eol="\n")
+
+
+
+
