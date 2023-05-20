@@ -1018,7 +1018,7 @@ a sequence is encountered. When an expected next item is missing, a
 def main():
     """main processing"""
     args = parse_arguments()
-    csv_writer = csv.DictWriter(args.outfile, fieldnames = Record().fields, extrasaction='ignore')
+    csv_writer = csv.DictWriter(args.outfile, fieldnames = Record().fields, extrasaction='ignore', lineterminator='\n')
     author = None
     titlerec = None
     csv_writer.writeheader()
