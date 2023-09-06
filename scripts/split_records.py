@@ -342,7 +342,77 @@ CITY = r"""
 Ялта|
 Ярославль
 """
-
+STEM_BLACKLIST = r"""
+алжир|
+амер(ик)?(анск)?|
+амур|
+амурск|
+антифашистск|
+байкал(ьск)?|
+басни|
+богатырск|
+волшеб|
+вост|
+вятск|
+героич|
+горск|
+дет(ск)?|
+донск|
+драм(атич)?(еск)?|
+европейск|
+енисейск|
+зарубеж|
+игры|
+индейск|
+кавказск|
+камчат(ск)?|
+комич|
+косм|
+легенды|
+лесн|
+любарской|
+малорусск|
+матросск|
+мозамбик|
+морск|
+мотивам|
+муз|
+муромск|
+нар(одн)?(ой|ых)?|
+научных|
+негритянск(ой)?|
+новгород|
+новогод|
+новых|
+одноим|
+октябрьск|
+омск|
+первомайск|
+пес(енки|енок|ни)|
+пионер(ск)?|
+повести|
+приходи|
+рождественск|
+разноцвет|
+рассказы|
+реалистическ|
+романт|
+рус(ск)?(их|ого)?|
+сев|
+сибир(ск)?|
+сказ(ы|ки)|
+слав(ян)?(ск)?|
+сов(етск)?|
+соврем|
+солдат(ск)?|
+стих(и|отвор)|
+театр|
+уральск|
+фантаст(ическ)?|
+цейлонск|
+шахмат|
+югосл
+"""
 
 class ExtendedFormatter(Formatter):
     """An extended format string formatter
@@ -440,8 +510,9 @@ class Record(dict):
         self.start = start
         self.end = end
         self.fields = ['vol', 'num', 'author', 'title',
-                       'subtitle', 'editorial', 'city', 'publisher',
-                       'year', 'series', 'pages', 'printrun', 'price',
+                       'subtitle', 'editorial', 'orig_lang',
+                       'transformed', 'city', 'publisher', 'year',
+                       'series', 'pages', 'printrun', 'price',
                        'addressee', 'contents', 'tail', 'bibaddon',
                        'section', 'thesame', 'start', 'end']
 
@@ -791,6 +862,8 @@ def process_the_same(rec, prev, verbose=False):
     for k, v in prev.items():
         if k not in rec:
             rec[k] = v
+        elif not rec[k]:
+            rec[k] = v
     return rec
 
 
@@ -962,6 +1035,52 @@ def parse_title(rec, verbose=False):
     return rec
 
 
+def extract_translation(rec, verbose=False):
+    """Extract language of the original from the editorial data"""
+    TRANSLATED = r'Пер(ев)?[.]|Перевод(ы)?|Перевел(а|и)?|(Стихи в|[В]|Авториз(ов)?[.]|Авторизованны[йе])\s+(пер(ев)?[.]|перевод[еы]?)'
+    TRANSFORMED = r'Пересказ(ал[аи]?)?|Обр(аб)?([.]|(отка|отал|отала))|Перераб[.]|[Вв] (перераб([.]|отке)|обраб([.]|отке))|Литобработка|В изложении|В сокращении|В пересказе|Переделка|Сокр(ащ)?([.]|(eно|ение))|Составил(а)? и обработал(а)?'
+    TRANSLAFORMED = r'(Сокр(ащ)?[.]|Сокращeнный|Вольный)\s+(пер(ев)?[.]|перевод)|Пер([.]|ев[.]|евод)\s+(в|и)\s+(обраб([.]|отк[ае]|отала?)|перераб([.]|отк[ае]))|Перевел(а)? и обработал(а)?'
+    LANG = r'\s+(с(о)?|е)(\s+яз[.])?\s+(?<lang>(\p{Ll}[\p{Ll}-]+(ого|ск[.]?|[.,])|коми|хинди|манси|телугу))'
+    RE_TRANS = r'.*?(' + r'(?<transform>' + r'(?<translate>' + TRANSLAFORMED + r')|' + TRANSFORMED + ')|(?<translate>' + TRANSLATED + r'))' + r'(' + LANG + r'(.+?(?<translate>' + TRANSLATED + r'))?|' r'(.+?(?<translate>' + TRANSLATED + r'))?(' + LANG + r')?' + ').*'
+    re_translated = re.compile(RE_TRANS, re.U)
+    try:
+        is_translated = re_translated.match(rec['editorial'])
+    except KeyError:
+        is_translated = False
+    if is_translated:
+        if is_translated.group('transform'):
+            rec['transformed'] = 'TRANSFORM'
+            rec['orig_lang'] = is_translated.group('lang') or ''
+        if is_translated.group('translate'):
+            rec['orig_lang'] = is_translated.group('lang') or 'NOLANG'
+    else:
+        rec['orig_lang'] = ''
+        rec['transformed'] = ''
+    return rec
+
+
+def extract_title_lang(rec, verbose=True):
+    """Extract language of the original from the (sub)title"""
+    FOLKLORE = r'(?<stem>\p{Lu}\p{Ll}+(ск|[.,]))(ие|ая|ий)?(\s+нар([.]|одн(ы[йе]|ая)))?(\s+дет[.])?\s+(сказк[аи]|легенд[аы]|эпос|сага|песни|песенки)'
+    WRITERS = r'.+?\s+(?<stem>\p{Ll}+(ск|[.]))(их)?(\s+дет[.])?\s+писателей'
+    PO_MOTIVAM = r'(?<transformed>[Пп]о\s+мотивам|Из|По)\s+(?<stem>\p{Ll}+[.,]?)(\s+нар[.])?\s+(сказ(ок|аний|ке)|поэзии)'
+    TLANG = r'.*?(' + FOLKLORE + '|' + WRITERS + '|' + PO_MOTIVAM + ').*'
+    title_lang = re.compile(TLANG, re.U)
+    if 'subtitle' in rec and rec['subtitle']:
+        base = rec['subtitle']
+    else:
+        base = rec['title']
+    has_title_lang = title_lang.match(base)
+    if has_title_lang:
+        if rec['orig_lang'] in ['', 'NOLANG']:
+            stem = has_title_lang.group('stem').lower().strip('.,')
+            if not re.match(STEM_BLACKLIST, stem, re.U | re.VERBOSE):
+                rec['orig_lang'] = f'{stem}.'
+        if has_title_lang.group('transformed'):
+            rec['transformed'] = 'TRANSFORM'
+    return rec
+
+
 def retry_series(rec, verbose=False):
     """Retry to find series in record tail after processing"""
     series_paren = r'^[ —.]*[(](?<series>[«\p{Lu}][^)]+?) ?[)](?<tail>.*)$'
@@ -1040,7 +1159,18 @@ def main():
                     pass
         else:
             row = parse_title(row, verbose=args.verbose)
+        row = extract_translation(row, verbose=args.verbose)
         row = retry_series(row, verbose=args.verbose)
+        row = extract_title_lang(row, verbose=args.verbose)
+        if row.isthesame:
+            try:
+                for k, v in titlerec.items():
+                    if k in ['orig_lang', 'transformed']:
+#                        if k == 'orig_lang' and v:
+#                            print(f"SAME_LANG {row['vol']}, {row['num']}, {row[k]}")
+                        row[k] = v
+            except (AttributeError):
+                pass
         titlerec = row
         csv_writer.writerow(row.serialize())
 
