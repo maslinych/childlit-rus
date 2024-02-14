@@ -1,0 +1,1109 @@
+---
+Title: В канон через тираж
+Author: К&C Маслинские
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE} 
+library(knitr,quietly=T)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width=1200, out.height=750)
+library(kableExtra)
+```
+
+## План
+
+* Введение: тираж как общий ресурс, объект литературной конкуренции. 
+* Дескриптивное описание колебаний общего тиража за весь период
+  (1924—1984)
+* Фокусировка на «бутылочных горлышках» — моментах, когда резко
+  снижалась общая «кормовая база» тиражей. Теоретическое ожидание:
+  такие бутылочные горлышки ведут к переструктурированию литературного
+  поля: усилению одних групп/авторов и вытеснению («вымиранию»)
+  других.
+* Рассмотрение трех бутылочных горлышек. RQ:
+  * Эффекты «сталинского вымирания» 1932 г.
+  * Как война повлияла на книгоиздание для детей (во время и после)?
+  * ?Была ли десталинизация в издании детской литературы
+  
+## Подготовка данных
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(zoo)
+```
+
+```{r}
+d <- read_csv("csv/authors_joined.rec.csv") %>%
+    filter(year >= 1924 & year <= 1984)
+```
+
+
+### Missing data
+
+Распределение неуказанных тиражей по авторам: 
+
+```{r}
+apr <- d %>% filter(!is.na(match)) %>% group_by(match) %>%
+    summarise(n = n(), npr = sum(is.na(printrun)), m = mean(printrun, na.rm=TRUE)) %>%
+    mutate(p = npr/n*100) %>% arrange(desc(p)) 
+```
+
+График
+
+```{r}
+apr %>% ggplot(aes(x = log(n), y = p)) + geom_point(alpha=0.3)
+```
+
+Таблица зависимости между кол-вом изданий автора и вероятностью
+отсутствия сведений о тираже. l — логарифмический порядок кол-ва
+изданий (0 - 1-3 издания, 1 — 4-31 издание и т.д.)
+
+```{r}
+apr %>% mutate(l = round(log10(n),0)) %>% group_by(l) %>%
+    summarise(nbooks = sum(n), nauthors = n_distinct(match), nmissing = sum(npr), p = sum(npr)/sum(n)*100, m = mean(m, na.rm=TRUE)) %>%
+    mutate(utrus = m*nmissing/nauthors)
+```
+
+## Бутылочные горлышки (1924—1984)
+
+### Количество изданий
+
+```{r, echo=FALSE}
+p1 <- d %>% count(year) %>%
+    ggplot(aes(x=year,y=n,group=1, label=n)) + geom_line(alpha=0.5) +
+    geom_text(nudge_y=-25, color="red", cex=3)
+p1
+```
+
+### Общий тираж
+
+Общий тираж за год (в миллионах экземпляров), показан черной
+линией. Розовая линия отражает процент изданий, для которых
+отсутствуют сведения о тираже:
+
+```{r, echo=FALSE}
+d.pr <- d %>% group_by(year) %>% mutate(pr=as.numeric(printrun), missing=is.na(pr)) %>%
+    group_by(year, missing) %>% summarize(n=sum(pr)/1e6, f=n()) %>%
+    group_by(year) %>% mutate(perc=f/sum(f)*100)
+d.pr %>% ggplot(aes(x=year, y=n, group=missing)) + geom_line() +
+    geom_line(data=subset(d.pr, missing == TRUE), aes(x=year, y=perc, color="red", alpha=0.3))
+```
+
+Вариант для печати: 
+
+```{r}
+p2 <- d.pr %>% ggplot(aes(x=year, y=n, group=missing)) + geom_line() +
+    xlab("год") + ylab("тираж (млн экз.)") +
+    geom_vline(xintercept = 1932, lty = 2, color = "darkred") +
+    annotate("text", x = 1933, y = 200, label = "1932", color="darkred", size=4, angle = 90) +
+    annotate("rect", xmin = 1939, xmax = 1945, ymin = -Inf, ymax = Inf, alpha=0.3) +
+    annotate("text", x = 1942, y = 200, label = "1939—1945", color="gray20", size=4, angle = 90) +
+    theme(legend.position = "none")
+p2
+
+ggsave(p2, filename="results/printruns.pdf", device=cairo_pdf, width=6, height=4)
+```
+
+То же, в логарифмической шкале: 
+
+```{r, echo=FALSE}
+d.pr %>% ggplot(aes(x=year, y=n, group=missing)) + geom_line() +
+    scale_y_log10()
+```
+
+Заключение: Два бутылочных горлышка по тиражу (периоды падения
+тиражей): 1931—1934 и 1939—1943. Малое торможение: 1961—1962.
+
+### Количество разных авторов
+
+```{r, echo=FALSE}
+d.a <- d %>% group_by(year) %>% mutate(noauthor=is.na(match)) %>%
+    group_by(year, noauthor) %>% summarise(n = n_distinct(match), f = n()) %>%
+    group_by(year) %>% mutate(perc=f/sum(f)*100)
+d.a %>% ggplot(aes(x=year, y=n, group=noauthor)) + geom_line(data=subset(d.a, noauthor == FALSE)) +
+    geom_line(data=subset(d.a, noauthor == TRUE), aes(x=year, y=perc, color="red", alpha=0.3)) 
+```
+
+Для печати
+
+```{r}
+p3 <- d.a %>% ggplot(aes(x=year, y=n, group=noauthor)) + geom_line(data=subset(d.a, noauthor == FALSE)) +
+    geom_vline(xintercept = 1932, lty = 2, color = "darkred") +
+    annotate("text", x = 1934, y = 700, label = "1932", color="darkred", size=4, angle = 90) +
+    annotate("rect", xmin = 1939, xmax = 1945, ymin = -Inf, ymax = Inf, alpha=0.3) +
+    annotate("text", x = 1942, y = 700, label = "1939—1945", color="gray20", size=4, angle = 90) +
+    xlab("год") + ylab("количество авторов") +
+    theme(legend.position = "none")
+p3
+
+ggsave(p3, filename="results/population.pdf", device=cairo_pdf, width=6, height=4)
+```
+
+То же, в логарифмической шкале: 
+
+```{r, echo=FALSE}
+d.a %>% ggplot(aes(x=year, y=n, group=noauthor)) + geom_line(data=subset(d.a, noauthor == FALSE)) +
+    geom_line(data=subset(d.a, noauthor == TRUE), aes(x=year, y=perc, color="red", alpha=0.3)) +
+    scale_y_log10()
+```
+
+### Коэффициент Джини
+
+Среднее по больнице:
+
+```{r, echo=FALSE}
+library(dineq)
+d %>% filter(!is.na(match)) %>%
+    summarise(gini = gini.wtd(printrun))
+
+d %>% filter(!is.na(match)) %>%
+    group_by(year) %>%
+    summarise(gini = gini.wtd(printrun)) %>%
+    ungroup() %>%
+    summarise(mgini = mean(gini))
+
+d %>% filter(!is.na(match)) %>%
+    group_by(match) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    ungroup() %>%
+    arrange(desc(pr)) %>%
+    mutate(p = pr/sum(pr)*100) %>%
+    mutate(cu = cumsum(p)) %>%
+    nrow
+```
+
+График ежегодной динамики неравенства. Только на основе авторских произведений:
+
+```{r, echo=FALSE}
+d.gini_a <- d %>% filter(!is.na(match)) %>%
+    group_by(year, match) %>%
+    summarise(a_pr = sum(printrun, na.rm=TRUE))
+d.gini <- d.gini_a %>%
+    group_by(year) %>%
+    summarise(gini = gini.wtd(a_pr), pr = sum(a_pr, na.rm=TRUE))
+d.gini %>% ggplot(aes(x = year, y = gini, gorup = 1)) + geom_line()
+```
+
+Для печати
+
+```{r}
+p4 <- d.gini %>% ggplot(aes(x = year, y = gini, gorup = 1)) +
+    geom_vline(xintercept = 1932, lty = 2, color = "darkred") +
+    annotate("text", x = 1933, y = 0.7, label = "1932", color="darkred", size=4, angle = 90) +
+    annotate("rect", xmin = 1939, xmax = 1945, ymin = -Inf, ymax = Inf, alpha=0.3) +
+    annotate("text", x = 1942, y = 0.7, label = "1939—1945", color="gray20", size=4, angle = 90) +
+    geom_line() +
+    xlab("год") + ylab("коэффициент Джини")
+p4
+
+ggsave(p4, filename="results/gini.pdf", device = cairo_pdf, width=6, height=4)
+```
+
+Заключение: неравенство по доступу к тиражам среди авторов в целом
+росло (на фоне общего роста объема детского книгоиздания) на протяжении
+довоенного периода, но с приостановкой в 1928—1931 гг. Эта
+приостановка случилась на фоне продолжавших расти до 1930
+гг. включительно общих тиражей и общего количества издаваемых
+авторов. После 1932 неравенство быстро растет и достигает пика
+в 1937. 
+
+Война резко снизила не только тиражи, но и неравенство среди авторов
+(до уровня конца 1920х), но после 1946 года оно снова начинает расти
+до среднего уровня за весь период. Есть промежуточный пик неравенства
+в 1943-1944 гг.
+
+В послевоенное время неравенство вновь быстро растет вплоть до начала
+1950-х (пик в 1951 г.). Это происходит на фоне стабильно растущих
+тиражей и популяции авторов. 
+
+Примерно с наступлением Оттепели неравенство начинает снова падать
+вплоть до 1966 года, при этом в 1960е численность авторов более-менее
+стабилизируется (выходит на плато около 900 ежегодно). 
+
+С 1967 г. неравенство вновь растет и достигает очередного пика в 1979
+г. Это происходит на фоне достаточно стабильной численности ежегодно
+издаваемых авторов (популяция авторов достигла максимума и больше не
+растет) и продолжающих расти (хотя и с уменьшающейся скоростью) общих
+тиражей.
+
+Не наблюдается прямой корреляции неравенства и общего тиража, хотя на
+этапе больших тиражей неравенство в среднем выше:
+
+```{r, echo=FALSE}
+ d.gini %>%
+     ggplot(aes(x = pr, y = gini, color = year)) + geom_point()
+```
+
+### Общая периодизация
+
+```{r}
+sdnorm <- function(x) {x/sd(abs(x), na.rm=TRUE)}
+dyn.norm <- d %>%
+    mutate(match = ifelse(is.na(match), author, match)) %>%
+    group_by(year, match) %>%
+    summarise(a_pr = sum(printrun, na.rm=TRUE)) %>%
+    group_by(year) %>%
+    summarise(pr = sum(a_pr, na.rm=TRUE)/1e6, nauthors = n_distinct(match), gini = gini.wtd(a_pr)) %>%
+    mutate(dpr = sdnorm(pr - lag(pr)), dauthors = sdnorm(nauthors - lag(nauthors)), dgini = sdnorm(gini - lag(gini)))
+ ```
+
+```{r}
+dyn.norm %>%
+    pivot_longer(cols = c(dpr, dauthors, dgini)) %>%
+    ggplot(aes(x = year, y = value, color=name, lty=name, group=name)) + geom_line() +
+    geom_hline(yintercept = 0)
+```
+
+Скользящее среднее за три года:
+
+```{r}
+dyn.norm3 <- dyn.norm %>%
+    mutate(dpr3=rollapply(dpr,3,mean,align='center',fill=NA)) %>%
+    mutate(dauthors3=rollapply(dauthors,3,mean,align='center',fill=NA)) %>%
+    mutate(dgini3=rollapply(dgini,3,mean,align='center',fill=NA)) %>%
+    mutate(class = case_when(
+               dpr3 > 0 & dauthors3 > 0 & dgini3 > 0 ~ "a",
+               dpr3 > 0 & dauthors3 > 0 & dgini3 < 0 ~ "b",
+               dpr3 < 0 & dauthors3 < 0 & dgini3 < 0 ~ "c",
+               dpr3 < 0 & dauthors3 < 0 & dgini3 > 0 ~ "d",
+               dpr3 > 0 & dauthors3 < 0 & dgini3 > 0 ~ "e",
+               dpr3 < 0 & dauthors3 > 0 & dgini3 < 0 ~ "f",
+               dpr3 > 0 & dauthors3 < 0 & dgini3 < 0 ~ "g",
+               dpr3 < 0 & dauthors3 > 0 & dgini3 > 0 ~ "h",
+           ))
+```
+
+Хронологическая динамика всех трех показателей, усредненных за три
+года для сглаживания небольших колебаний и выявления более длительных
+трендов. 
+
+```{r, echo=FALSE}
+dyn.norm3 %>%
+    pivot_longer(cols = c(dpr3, dauthors3, dgini3)) %>%
+    ggplot(aes(x = year, y = value, color=name, lty=name, group=name)) + geom_line() +
+    geom_hline(yintercept = 0)
+```
+
+Последовательность классов
+
+```{r, echo=FALSE}
+dyn.norm3 %>%
+    ggplot(aes(x = as.factor(year), fill=class)) + geom_bar()
+```
+
+Общая частотность периодов, по классам: 
+
+```{r}
+dyn.norm3 %>% count(class)
+```
+
+## Описание периодов, по классам ситуаций
+
+### Периоды изобилия
+
+Классы a и b. В эти периоды фоновыми условиями являются рост общих
+тиражей год к году и рост количества ежегодно публикуемых авторов
+(тоже год к коду). Разница между двумя подклассами заключается в том,
+каким образом изменяется неравенство. В первом случае (класс a)
+неравенство растет на фоне роста тиражей и издаваемых авторов (иными
+словами, при том что авторов и ресурсов становится больше, некоторые
+из авторов (относительно небольшая группа) получают непропорционально
+больший доступ к ресурсам (тиражам), чем большинство печатаемых.
+Во втором случае (класс b) на фоне общего роста тиражей и притока
+авторов снижается и неравенство, то есть расширяющийся круг авторов
+более равномерно получает доступ к расширяющимся ресурсам.
+
+В сумме на эти два типа приходится большая часть (70%) всего периода. 
+Периоды роста формируют несколько достаточно длительных непрерывных
+отрезков: НЭП (1926—1930), конец 1930х (1935—1938), длительный рост
+послевоенного периода (1944—1959), рост 1961—1963 и длительный рост
+эпохи застоя (1971—1980).
+
+```{r}
+dyn.norm3 %>% filter(class %in% c("a")) %>% pull(year) %>% paste(collapse=" ")
+```
+
+Характерно, что периоды роста начинаются (почти всегда, за исключением
+первой половины 1960х) с класса а, т.е. сопровождаются вначале ростом
+неравенства доступа к тиражам. 
+
+1924-1928, 1935-1938, 1947-1952, 1971-1975
+
+
+
+
+
+## Анализ динамики, состав элит
+
+
+* Кто выжил во время войны — это те же, кто пошел в рост после войны?
+  Гипотеза: в рост пошли другие. Те ли расцветают в период
+  восстановительного роста, которые удерживались в период низкой базы?
+
+* С чем связан пик неравенства в 1944 году? За счет чего он
+  образовался?
+    
+* Демографические и тиражные ямы: кто выживал? Кого мы ожидали бы там
+  увидеть? Классики — Пушкин, Мамин-Сибиряк.
+  
+* Как оценить эффекты бутылочного горлышка на собственно вымирание
+  (вымывание) авторов из литературы? 
+  
+### Бенефициары роста
+
+* Кто увеличил тиражи в периоды роста? 
+
+Способ расчета: динамика позиции в тиражном рейтинге по кумулятивному тиражу. 
+Вопрос, что брать за стартовую точку. Простейший вариант — первый год
+периода. Показатель роста — средний сдвиг позиции в рейтинге год к году.
+
+```{r}
+dynpr <- function(data, startd, endd) {
+    data %>%
+    filter(year >= startd & year <= endd) %>%
+    filter(!is.na(match)) %>%
+    group_by(match, year) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    group_by(match) %>%
+    mutate(cumpr = cumsum(pr)) %>%
+    ungroup() %>%
+    complete(match, year) %>%
+    mutate(cumpr = ifelse(year==startd & is.na(cumpr), 0, cumpr)) %>%
+    fill(cumpr) %>%
+    group_by(year) %>%
+    mutate(p = cumpr/sum(cumpr)*100)
+}
+```
+
+
+```{r}
+dynsummary <- function(data) {
+    data %>%
+        group_by(match) %>%
+        arrange(match, year) %>%
+        filter(p > 0) %>%
+        mutate(step = p-lag(p)) %>%
+        summarise(startp = head(p,1), endp = tail(p,1), diffp = tail(p,1)-head(p,1), meanp = mean(step, na.rm=TRUE)) %>%
+        mutate(growp = diffp/endp*100) %>%
+        arrange(desc(diffp))
+}
+```
+
+```{r}
+plot_gains <- function(data, pthreshold = 1, diffthreshold = 1) {
+    data %>%
+    mutate(label = ifelse(abs(diffp)>diffthreshold | endp>pthreshold, match, NA)) %>%
+    ggplot(aes(x = endp, y = diffp, color=meanp, label=label)) + geom_point() +
+    geom_text() +
+    scale_color_gradient2(high="blue", low="red", mid="gray40", midpoint=0)
+}
+
+plot_trajectory <- function(data, dynsum) {
+    data %>%
+        left_join(dynsum) %>%
+        group_by(match) %>%
+        filter(mean(p)>1) %>%
+        mutate(label = ifelse(p==max(p) & max(p) > 1, match, NA)) %>%
+        mutate(p = ifelse(p==0,NA,p)) %>%
+        ggplot(aes(x=year, y=p, group=match, color=diffp, label=label)) +
+        geom_line(alpha=0.5) +
+        geom_text(alpha=1) +
+        scale_color_gradient2(high="blue", low="red", mid="gray50", midpoint=0)    
+}
+```
+
+#### 1924-1928
+
+```{r, echo=FALSE}
+raise1924_1928 <- dynpr(d, 1924, 1928)
+adiff1924_1928 <- dynsummary(raise1924_1928)
+```
+
+```{r}
+plot_gains(adiff1924_1928)
+```
+
+Траектории писателей: 
+
+```{r, echo=FALSE}
+plot_trajectory(raise1924_1928, adiff1924_1928)
+```
+
+#### 1935—1938
+
+```{r}
+raise1935_1938 <- dynpr(d, 1935, 1938)
+adiff1935_1938 <- dynsummary(raise1935_1938)
+```
+
+```{r}
+plot_gains(adiff1935_1938)
+```
+
+Траектории писателей: 
+
+```{r, echo=FALSE}
+plot_trajectory(raise1935_1938, adiff1935_1938)
+```
+
+
+#### 1932—1939
+
+Второй период роста неравенства: 1932—1939.
+
+```{r, echo=FALSE}
+raise1932_1939 <- dynpr(d, 1932, 1939)
+```
+
+```{r}
+adiff1932_1939 <- dynsummary(raise1932_1939)
+```
+
+Взаимосвязь суммарной доли тиража за период и прироста за период: 
+
+
+```{r}
+plot_gains(adiff1932_1939)
+```
+
+Траектории писателей: 
+
+```{r, echo=FALSE}
+plot_trajectory(raise1932_1939, adiff1932_1939)
+```
+
+#### 1947—1952
+
+Послевоенный сталинизм, период роста тиражей, количества авторов и
+неравенства. 
+
+```{r}
+raise1947_1952 <- dynpr(d, 1947, 1952)
+adiff1947_1952 <- dynsummary(raise1947_1952)
+```
+
+```{r}
+plot_gains(adiff1947_1952)
+```
+
+```{r}
+plot_trajectory(raise1947_1952, adiff1947_1952)
+```
+
+#### 1948-1953
+
+Послевоенный сталинизм, взятый несколько позднее.
+
+```{r}
+raise1948_1953 <- dynpr(d, 1948, 1953)
+adiff1948_1953 <- dynsummary(raise1948_1953)
+```
+
+```{r}
+plot_gains(adiff1948_1953)
+```
+
+```{r}
+plot_trajectory(raise1948_1953, adiff1948_1953)
+```
+
+#### 1956-1962
+
+Оттепель. Диверсификация печати — падение неравенства на фоне роста
+тиражей и количества авторов. 
+
+```{r}
+raise1955_1962 <- dynpr(d, 1955, 1962)
+adiff1955_1962 <- dynsummary(raise1955_1962)
+```
+
+```{r}
+plot_gains(adiff1955_1962, pthreshold=0.5)
+```
+
+```{r}
+plot_trajectory(raise1955_1962, adiff1955_1962)
+```
+
+#### 1968-1972
+
+Демонтаж оттепели. Падение количества издаваемых авторов на фоне
+продолжающегося роста тиражей (и сопутствующего роста неравенства). 
+
+```{r}
+raise1968_1972 <- dynpr(d, 1968, 1972)
+adiff1968_1972 <- dynsummary(raise1968_1972)
+```
+
+```{r}
+plot_gains(adiff1968_1972, pthreshold=0.5, diffthreshold=0.5)
+```
+
+```{r}
+plot_trajectory(raise1968_1972, adiff1968_1972)
+```
+
+#### 1967-1978
+
+```{r}
+raise1967_1978 <- dynpr(d, 1967, 1978)
+adiff1967_1978 <- dynsummary(raise1967_1978)
+```
+
+```{r}
+plot_gains(adiff1967_1978, pthreshold=0.5, diffthreshold=0.5)
+```
+
+```{r}
+plot_trajectory(raise1967_1978, adiff1967_1978)
+```
+
+### Периоды роста неравенства 
+
+Типология: 
+
+1924-1828: (d?)-a
+1932-1939: d-e-a-e-a-h
+1943-1944: d-a
+1947-1952: a
+1967-1978: a-e-a-e-a
+
+
+Типы результатов для периода по процентам тиража в начале и в конце: 
+
+* Высокий—высокий (сохранил элитную позицию)
+* Высокий—низкий (потерял элитную позицию)
+* Низкий—высокий (приобрел элитную позицию)
+* Низкий—низкий
+
+```{r}
+plot_period_diff <- function(data, pthreshold=1) {
+    data %>%
+        mutate(label = ifelse(startp>pthreshold | endp>pthreshold, match, NA)) %>%
+        ggplot(aes(x=startp, y=endp, color=meanp, label=label)) +
+        geom_point(alpha=0.6) + geom_text(alpha=1) +
+        scale_color_gradient2(low="red", high="blue", mid="gray80") +
+        geom_abline(slope=1, intercept=0, color="gray50", lty=3)
+}
+
+plot_period_diff(adiff1924_1928)
+```
+
+```{r}
+plot_period_diff(adiff1932_1939)
+```
+
+```{r}
+plot_period_diff(adiff1947_1952)
+```
+
+```{r}
+top1928 <- adiff1924_1928 %>%
+    arrange(desc(endp)) %>%
+    mutate(cu=cumsum(endp), r=row_number())
+top1939 <- adiff1932_1939 %>%
+    arrange(desc(endp)) %>%
+    mutate(cu=cumsum(endp), r=row_number())
+top1952 <- adiff1947_1952 %>%
+    arrange(desc(endp)) %>%
+    mutate(cu=cumsum(endp), r=row_number())
+
+top1962 <- adiff1955_1962 %>%
+    arrange(desc(endp)) %>%
+    mutate(cu=cumsum(endp), r=row_number())
+
+top1978 <- adiff1967_1978 %>%
+    arrange(desc(endp)) %>%
+    mutate(cu=cumsum(endp), r=row_number()) 
+
+alltop <- bind_rows(t1928=top1928, t1939=top1939, t1952=top1952, t1962=top1962, t1978=top1978, .id="period")
+
+
+p11 <- alltop %>%
+    filter(cu<25) %>%
+    mutate(rank = factor(r, levels=as.character(seq(1:max(r))))) %>%
+    ggplot(aes(x=period, y=rank, group=match, label=match, color=match)) +
+    geom_line() + geom_point() + geom_text() +
+    scale_y_discrete(limits=rev) + theme(legend.position = "none")
+p11
+
+ggsave("results/authorstop25.png", p11, width=8, height=6)
+```
+
+```{r}
+alltop %>%
+    filter(cu<50) %>%
+    mutate(rank = factor(r, levels=as.character(seq(1:max(r))))) %>%
+    ggplot(aes(x=period, y=rank, group=match, label=match, color=match)) +
+    geom_line(alpha=0.5) + geom_point(alpha=0.3) + geom_text() +
+    scale_y_discrete(limits=rev) + theme(legend.position="none")
+```
+
+
+### Жертвы сжатия
+
+#### 1930-1933
+
+```{r}
+raise1930_1933 <- dynpr(d, 1930, 1933)
+adiff1930_1933 <- dynsummary(raise1930_1933)
+```
+
+```{r}
+plot_gains(adiff1930_1933, pthreshold=0.5, diffthreshold=0.5)
+```
+
+```{r}
+plot_trajectory(raise1930_1933, adiff1930_1933)
+```
+
+
+
+#### 1938-1943
+
+ВОВ.
+
+```{r}
+raise1938_1943 <- dynpr(d, 1938, 1943)
+adiff1938_1943 <- dynsummary(raise1938_1943)
+```
+
+```{r}
+plot_gains(adiff1938_1943, pthreshold=0.5, diffthreshold=0.5)
+```
+
+```{r}
+plot_trajectory(raise1938_1943, adiff1938_1943)
+```
+
+### Модель переизданий 
+
+```{r}
+a_printings <- d %>% filter(!is.na(match)) %>%
+    group_by(match, year) %>%
+    summarise(n = n(), pr = sum(printrun, na.rm=TRUE)) %>%
+    group_by(match) %>%
+    mutate(step = year - lag(year))
+```
+
+Общее распределение интервалов между изданиями одного и того же
+автора: 
+
+```{r}
+a_printings %>%
+    ggplot(aes(x = as.factor(step))) + geom_bar(fill="darkgreen")
+```
+
+#### Вероятность переизданий
+
+```{r}
+d %>% filter(!is.na(match)) %>% group_by(match, year) %>%
+    summarise(f = n()) %>% mutate(dyear = year-lag(year)) %>%
+    filter(!is.na(dyear)) %>% ungroup() %>%
+    count(dyear, sort=TRUE) %>% mutate(p = n/sum(n)*100) %>%
+    mutate(cu = cumsum(p))
+```
+
+
+Распределение авторов по среднему интервалу между изданиями. 
+
+```{r}
+a_printings %>%
+    group_by(match) %>%
+    summarise(mean = mean(step, na.rm=TRUE)) %>%
+    ggplot(aes(x=mean)) + geom_density()
+```
+
+```{r}
+a_printings %>%
+    group_by(match) %>%
+    summarise(meanstep = mean(step, na.rm=TRUE), nyears = n()) %>%
+    ggplot(aes(x=meanstep, y=nyears, alpha=0.4)) + geom_point()
+```
+
+Распределение интервалов издания всех авторов на момент 1931—1932: 
+
+```{r}
+period_summary <- function(data, startd, endd) {
+    data %>%
+    filter(year <= 1930) %>%
+    group_by(match) %>%
+    summarise(last = tail(year,1), np = sum(n), apr = sum(pr, na.rm=TRUE)/1e6, p = sum(pr, na.rm=TRUE)/sum(.$pr)*100) %>%
+    arrange(desc(p))
+}
+period_diff <-function(data, start1, end1, start2, end2) {
+    p1 <- period_summary(data, start1, end1)
+    p2 <- period_summary(data, start2, end2)
+    p1 %>%
+    left_join(p2, by="match") %>%
+    replace_na(list(p.y=0)) %>%
+    mutate(pdiff = p.y - p.x) %>%
+    arrange(desc(pdiff)) 
+}
+plot.period.diff <- function(data, pthreshold=1, diffthreshold=0.5) {
+    data %>%
+    mutate(label = ifelse(abs(pdiff) > pthreshold | p.x > diffthreshold | p.y > diffthreshold, match, NA)) %>%
+    ggplot(aes(x = p.x, y = p.y, color=pdiff, label=label)) + geom_point() + geom_text(alpha=1) +
+    scale_color_gradient2(low="red", high="blue", mid="gray80")
+}
+```
+
+```{r}
+plot.period.diff(period_diff(a_printings, 1924, 1930, 1931, 1932))
+```
+
+```{r}
+sum1924_1930 <- a_printings %>%
+    filter(year <= 1930) %>%
+    group_by(match) %>%
+    summarise(last = tail(year,1), np = sum(n), apr = sum(pr, na.rm=TRUE)/1e6, p = sum(pr, na.rm=TRUE)/sum(.$pr)*100) %>%
+    arrange(desc(p))
+```
+
+```{r}
+sum1931_1932 <- a_printings %>%
+    filter(year >= 1931 & year <= 1932) %>%
+    group_by(match) %>%
+    summarise(last = tail(year,1), np = sum(n), apr = sum(pr, na.rm=TRUE)/1e6, p = sum(pr, na.rm=TRUE)/sum(.$pr)*100) %>%
+    arrange(desc(p))
+```
+
+```{r}
+dip1931 <- sum1924_1930 %>%
+    left_join(sum1931_1932, by="match") %>%
+    replace_na(list(p.y=0)) %>%
+    mutate(pdiff = p.y - p.x) %>%
+    arrange(desc(pdiff)) 
+```
+
+```{r}
+dip1931 %>%
+    mutate(label = ifelse(abs(pdiff)>0.5 | p.x > 1 | p.y > 1,match,NA)) %>%
+    ggplot(aes(x = p.x, y = p.y, color=pdiff, label=label)) + geom_point() + geom_text(alpha=1) +
+    scale_color_gradient2(low="red", high="blue", mid="gray80")
+```
+
+### Динамика перемещений при сжатии/расширении
+
+```{r}
+printing_positions <- function(data, startd, endd) {
+    data %>%
+        filter(!is.na(match)) %>%
+        filter(year >= startd & year <= endd) %>%
+        group_by(match) %>%
+        summarise(meanpr = mean(printrun, na.rm=TRUE), freq = n()/(endd-startd+1), ppr = sum(printrun, na.rm=TRUE)/sum(.$printrun, na.rm=TRUE)*100)
+}
+plot_pp <- function(data) {
+    data %>%
+        ggplot(aes(x = meanpr, y = freq, alpha=0.3)) + geom_point()
+}
+pp_diff <- function(data, p1s, p1e, p2s, p2e) {
+    p1 <- printing_positions(data, p1s, p1e)
+    p2 <- printing_positions(data, p2s, p2e)
+    p1 %>% full_join(p2, by="match") %>%
+        mutate(class = case_when(
+                   ppr.y == 0 | is.na(ppr.y) ~ 4,
+                   ppr.x == 0 | is.na(ppr.x) ~ 8,
+                   TRUE ~ 1
+               )) %>%
+        replace(is.na(.), 0) %>%
+        mutate(pdiff = ppr.y - ppr.x, fdiff = freq.y - freq.x, meanprdiff = meanpr.y - meanpr.x)
+}
+plot_pp_diff <- function(data, p1s, p1e, p2s, p2e, pthreshold = 1) {
+    pp_diff(data, p1s, p1e, p2s, p2e) %>%
+        mutate(label = ifelse(ppr.x > pthreshold | ppr.y > pthreshold, match, NA)) %>%
+        mutate(meanpr.x = ifelse(meanpr.x==0, NA, meanpr.x)) %>%
+        mutate(meanpr.y = ifelse(meanpr.y==0, NA, meanpr.y)) %>%
+        ggplot(aes(x = meanpr.x, y = freq.x, xend = meanpr.y, yend = freq.y, group=match, color=pdiff, pch=as.factor(class), alpha=0.3)) +
+        geom_point() +
+        geom_point(aes(x = meanpr.y, y = freq.y)) +
+        geom_text(aes(x = meanpr.y, y = freq.y, label=label)) +
+        geom_text(aes(x = meanpr.x, y = freq.x, label=label)) +
+        geom_segment(arrow = arrow(length = unit(4, "pt"))) +
+        scale_x_log10(breaks = c(1000, 5000, 10000, 50000, 100000, 1000000, 2500000), labels=c("1000", "5000", "10000", "50000", "100000", "1000000", "2500000")) +
+        scale_color_gradient2(low="red", high="blue", mid="gray80") +
+        scale_shape_manual(values=c(1,4,8)) + facet_wrap(~class)
+}
+plot_pp_dyn <- function(data, p1s, p1e, p2s, p2e, pthreshold = 1) {
+    pp_diff(data, p1s, p1e, p2s, p2e) %>%
+        mutate(label = ifelse(ppr.x > pthreshold | ppr.y > pthreshold, match, NA)) %>%
+        filter(class==1) %>%
+        ggplot(aes(x = meanpr.x, y = freq.x, xend = meanpr.y, yend = freq.y, group=match, color=pdiff, alpha=0.3)) +
+        geom_point() +
+        geom_point(aes(x = meanpr.y, y = freq.y)) +
+        geom_text(aes(x = meanpr.y, y = freq.y, label=label)) +
+        geom_text(aes(x = meanpr.x, y = freq.x, label=label)) +
+        geom_segment(arrow = arrow(length = unit(4, "pt"))) +
+        scale_x_log10(breaks = c(1000, 5000, 10000, 50000, 100000, 1000000, 2500000), labels=c("1000", "5000", "10000", "50000", "100000", "1000000", "2500000")) +
+        scale_color_gradient2(low="red", high="blue", mid="gray80") +
+        scale_shape_manual(values=c(1,4,8)) + facet_wrap(~pdiff>0)
+}
+pp_scatterplot <- function(data, p1s, p1e, p2s, p2e, pthreshold = 1) {
+    pp_diff(data, p1s, p1e, p2s, p2e) %>%
+        mutate(label = ifelse(ppr.x > pthreshold | ppr.y > pthreshold, match, NA)) %>%
+        mutate(np = freq.x*(p1e-p1s+1)+freq.y*(p2e-p2s+1)) %>%
+        ggplot(aes(x = meanprdiff, y = fdiff, color = pdiff, label = label, size = log(np)+2, shape = as.factor(class))) +
+        geom_point(alpha=0.3) +
+        geom_text(alpha=1) +
+        geom_vline(xintercept=0, lty=2, alpha=0.5) +
+        geom_hline(yintercept=0, lty=2, alpha=0.5) +
+        scale_color_gradient2(low="red", high="blue", mid="gray80") +
+        scale_shape_manual(values=c(1,4,8)) +
+        ggtitle(paste("Изменение среднего тиража и частоты издания: ", p1s, "-", p1e, " : ", p2s, "-", p2e, collapse="")) +
+        facet_wrap(~class)
+}
+pp_density <- function(data, p1s, p1e, p2s, p2e) {
+    pp_diff(data, p1s, p1e, p2s, p2e) %>%
+        filter(ppr.x > 0 | ppr.y > 0) %>%
+        pivot_longer(cols=c(pdiff, fdiff, meanprdiff)) %>%
+        filter(!value==0) %>%
+        ggplot(aes(x = value)) + geom_density() +
+        facet_wrap(~name)
+}
+```
+
+
+#### Коэффициент Жаккара
+
+```{r}
+jaccard <- bind_rows(lapply(1924:1979, function(x) {pp_diff(d, x, x+2, x+3, x+5) %>% summarise(jaccard = sum(class==1)/n())}), .id="id")
+```
+
+```{r}
+jaccard %>%
+    mutate(year=1925+as.numeric(id)) %>%
+    ggplot(aes(x = year, y = jaccard, group=1)) + geom_line()
+```
+
+```{r}
+jaccard_ppr <- bind_rows(lapply(1924:1979, function(x) {pp_diff(d, x, x+2, x+3, x+5)}), .id="id") %>%
+    group_by(id) %>%
+    arrange(id, desc(ppr.x)) %>%
+    mutate(prx = cumsum(ppr.x)) %>%
+    arrange(id, desc(ppr.y)) %>%
+    mutate(pry = cumsum(ppr.y)) %>%
+    mutate(year=1925+as.numeric(id))    
+```
+
+Коэффициент Жаккара по стыкованным трехлетним периодам только для
+авторов, составляющих топ-50% всех тиражей.
+
+```{r}
+jaccard_ppr %>%
+    filter(prx < 50 | pry < 50) %>%
+    group_by(year) %>%
+    summarise(jaccard = sum(prx < 50 & pry < 50)/n()) %>%
+    ggplot(aes(x = year, y = jaccard, group = 1)) + geom_line() + geom_point()
+```
+
+Коэффициент Жаккара по стыкованным трехлетним периодам только для
+авторов, составляющих топ-25% всех тиражей.
+
+```{r}
+jaccard_ppr %>%
+    filter(prx < 25 | pry < 25) %>%
+    group_by(year) %>%
+    summarise(jaccard = sum(prx < 25 & pry < 25)/n()) %>%
+    ggplot(aes(x = year, y = jaccard, group = 1)) + geom_line() + geom_point()
+```
+
+Коэффициент Жаккара для полного списка авторов:
+
+```{r}
+jaccard_ppr %>%
+    group_by(year) %>%
+    summarise(jaccard = sum(class==1)/n()) %>%
+    ungroup %>%
+    ggplot(aes(x = year, y = jaccard, group = 1)) + geom_line() + geom_point() +
+    geom_hline(aes(yintercept = mean(jaccard, na.rm=TRUE), color="red", alpha=0.4), lty=2)
+```
+
+
+
+Коэффициент Жаккара по стыкованным трехлетним периодам только для
+менее тиражных авторов, составляющих оставшиеся 50% всех тиражей
+(большинство авторов).
+
+```{r}
+jaccard_ppr %>%
+    filter(prx >= 50 | pry >= 50) %>%
+    group_by(id) %>%
+    summarise(jaccard = sum(class==1)/n()) %>%
+    ggplot(aes(x = year, y = jaccard, group = 1)) + geom_line() + geom_point()
+```
+
+Количество и списки авторов по верхним 50%
+
+```{r}
+jpr25 <- jaccard_ppr %>%
+    filter(prx < 25 | pry < 25) %>%
+    group_by(year) %>%
+    summarise(a = sum(prx < 25), b = sum(pry < 25), ab = sum(prx < 25 & pry < 25), l = paste(match[prx < 25 & pry < 25], collapse=" "), la = paste(match[prx < 25 & pry >= 25], collapse=" "), lb = paste(match[pry < 25 & prx >= 25], collapse=" ")) %>%
+    arrange(year)
+```
+
+
+```{r}
+jpr50 <- jaccard_ppr %>%
+    filter(prx < 50 | pry < 50) %>%
+    group_by(year) %>%
+    summarise(a = sum(prx < 50), b = sum(pry < 50), ab = sum(prx < 50 & pry < 50), l = paste(match[prx < 50 & pry < 50], collapse=" "), la = paste(match[prx < 50 & pry >= 50], collapse=" "), lb = paste(match[pry < 50 & prx >= 50], collapse=" ")) %>%
+    arrange(year)
+```
+
+Новые имена в топовых списках: 
+
+```{r}
+author_span50 <- jpr50 %>%
+    mutate(x = paste(l, la, sep=" "), y = paste(l, lb, sep=" ")) %>%
+    separate_rows(x, sep=" ") %>%
+    group_by(x) %>%
+    summarise(first = paste(min(year)-2, "-", min(year), sep=""), last = paste(max(year)-2, "-", max(year), sep="")) %>%
+    arrange(first)
+```
+
+```{r}
+author_span25 <- jpr25 %>%
+    mutate(x = paste(l, la, sep=" "), y = paste(l, lb, sep=" ")) %>%
+    separate_rows(x, sep=" ") %>%
+    group_by(x) %>%
+    summarise(first = paste(min(year)-2, "-", min(year), sep=""), last = paste(max(year)-2, "-", max(year), sep="")) %>%
+    arrange(first)
+```
+
+#### Яма 1931
+
+```{r}
+t29_31 <- d %>%
+    filter(year >= 1929 & year <= 1931) %>%
+    filter(!is.na(match)) %>%
+    group_by(match) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    arrange(desc(pr)) %>%
+    ungroup %>%
+    mutate(p = pr/sum(pr)*100) %>%
+    mutate(cu = cumsum(p)) %>%
+    filter(cu < 101) %>% pull(match)
+t32_34 <- d %>%
+    filter(year >= 1932 & year <= 1934) %>%
+    filter(!is.na(match)) %>%
+    group_by(match) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    arrange(desc(pr)) %>%
+    ungroup %>%
+    mutate(p = pr/sum(pr)*100) %>%
+    mutate(cu = cumsum(p)) %>%
+    filter(cu < 101) %>% pull(match)
+length(t29_31)
+length(t32_34)
+
+t35_37 <- d %>%
+    filter(year >= 1935 & year <= 1937) %>%
+    filter(!is.na(match)) %>%
+    group_by(match) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    arrange(desc(pr)) %>%
+    ungroup %>%
+    mutate(p = pr/sum(pr)*100) %>%
+    mutate(cu = cumsum(p)) %>%
+    filter(cu < 101) %>% pull(match)
+
+length(t35_37)
+
+## не прошедшие горлышко
+t29_31[!t29_31 %in% t32_34] %>% length
+## нововыбившиеся
+t32_34[!t32_34 %in% t29_31] %>% length
+## прошедшие горлышко
+t32_34[t32_34 %in% t29_31] %>% length
+
+t31 <- d %>%
+    filter(year == 1931) %>%
+    filter(!is.na(match)) %>%
+    group_by(match) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    arrange(desc(pr)) %>%
+    ungroup %>%
+    mutate(p = pr/sum(pr)*100) %>%
+    mutate(cu = cumsum(p)) %>%
+    filter(cu < 50) %>% pull(match)
+length(t31)
+t28_30[!t28_30 %in% t31]
+t31[!t31 %in% t28_30]
+
+t32 <- d %>%
+    filter(year == 1932) %>%
+    filter(!is.na(match)) %>%
+    group_by(match) %>%
+    summarise(pr = sum(printrun, na.rm=TRUE)) %>%
+    arrange(desc(pr)) %>%
+    ungroup %>%
+    mutate(p = pr/sum(pr)*100) %>%
+    mutate(cu = cumsum(p)) %>%
+    filter(cu < 50) %>% pull(match)
+length(t32)
+t28_30[!t28_30 %in% t32]
+t32[!t32 %in% t28_30]
+t32[t32 %in% t28_30]
+
+```
+
+### Сравнение топов
+
+* Сравнить топы за годы с пиковым неравенством: 1927, 1937, 1943,
+  1951, 1979. 
+
+```{r, echo=FALSE}
+top.ineq.years <- c(1927, 1937, 1944, 1951, 1979)
+d.gini_a %>%
+    filter(year %in% top.ineq.years) %>%
+    arrange(year, desc(a_pr)) %>%
+    group_by(year) %>%
+    mutate(cump = cumsum(a_pr)/sum(a_pr)*100) %>%
+    filter(cump <= 33) %>%
+    mutate(a_pr = a_pr/1e6) %>%
+    kbl() %>% kable_styling()
+```
+
+* Кто выжил во время военного вымирания?  (150 авторов и безавторские произведения)
+
+Авторы, печатавшиеся в 1937 и в 1942, 
+
+```{r, echo=FALSE}
+pre_war <- d.gini_a %>%
+    filter(year %in% c(1937, 1942)) %>%
+    group_by(year) %>%
+    arrange(year, desc(a_pr)) %>%
+    mutate(cump = cumsum(a_pr)/sum(a_pr)*100) %>%
+    ungroup() %>%
+    pivot_wider(id_cols = match, names_from = year, values_from = c(cump))
+pre_war %>%
+    filter(`1937` & `1942`) %>%
+    mutate(diff = `1937` - `1942`) %>%
+    arrange(desc(diff)) %>% 
+    kbl() %>% kable_styling()
+```
+
+Авторы, печатавшиеся в 1942, но не в 1937: 
+
+```{r, echo=FALSE}
+pre_war %>%
+    filter(is.na(`1937`)) %>%
+    arrange(`1942`) %>% 
+    kbl() %>% kable_styling()
+```
+
+Исчезнувшие в 1942: 
+
+```{r, echo=FALSE}
+pre_war %>%
+    filter(is.na(`1942`)) %>%
+    arrange(`1937`) %>% 
+    kbl() %>% kable_styling()
+```
+
