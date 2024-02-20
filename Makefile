@@ -49,3 +49,14 @@ data: csv/all.rec.csv $(recfiles)
 illustrators-net: $(patsubst index/%.artists.txt, results/ill/%_general_.csv, $(artistsfiles))
 
 
+tex-header := latex_header_ru.tex
+
+%.tex: %.md
+	pandoc -s -H $(tex-header) -o $@ $<
+
+%.pdf: %.tex
+	pdflatex $<
+	pdflatex $<
+
+test: 
+	python3 test_data.py
