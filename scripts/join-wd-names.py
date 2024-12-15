@@ -144,33 +144,6 @@ def aggregate_names(namelist):
                 yield v
 
 
-def compare_names(aname, bname):
-    nmatch = re.match(aname, bname)
-    if not nmatch and len(bname) < len(aname):
-        nmatch = re.match(bname, aname)
-    return nmatch
-
-
-def compare_namedicts(adict, bdict):
-    ad = defaultdict(str)
-    ad.update(adict)
-    bd = defaultdict(str)
-    bd.update(bdict)
-    if ad['first'] and bd['first']:
-        afirst = ad['first'].strip('.')
-        bfirst = bd['first'].strip('.')
-        firstmatch = compare_names(afirst, bfirst)
-    else:
-        firstmatch = True
-    if ad['second'] and bd['second']:
-        asecond = ad['second'].strip('.')
-        bsecond = bd['second'].strip('.')
-        secondmatch = compare_names(asecond, bsecond)
-    else:
-        secondmatch = True
-    return bool(firstmatch and secondmatch)
-
-
 def print_name(named):
     d = defaultdict(str)
     d.update(named)
@@ -248,7 +221,7 @@ def main():
         for m, qids in matched.items():
             for qid, namelist in qids.items():
                 stnames, wdnames = zip(*namelist)
-                ofile.write(f'{m}\t{qid}\t{";".join(stnames)}\t{";".join(wdnames)}\n')
+                ofile.write(f'{m}\t{qid}\t{";".join(set(stnames))}\t{";".join(set(wdnames))}\n')
     # for match, qid in find_qid_matches(disamb, wd_persons):
     #     print(f"MATCH:\t{match}\t{qid}")
 
