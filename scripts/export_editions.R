@@ -35,7 +35,7 @@ a |> group_by(author) |> filter(n()>1) |> pull(author) |> unique()
 
 d.a <- d %>% select(vol, num, author, orig_lang) %>%
     separate_rows(author, sep="; ") %>%
-    left_join(select(a, author, author_std=match, author_gender=gender), relationship = "many-to-one") %>%
+    left_join(select(a, author, author_std=match), relationship = "many-to-one") %>%
     mutate(author_std = ifelse(author == "OTHERS", "OTHERS", author_std)) %>%
     left_join(select(al, author_std, deflang=default, enforce)) |>
     left_join(select(l, orig_lang, orig_lang_std=fullname)) |>
@@ -59,19 +59,17 @@ d.a %>% filter(author!="NOAUTHOR" & is.na(author_std))
 
 a.std <- d.a %>% group_by(vol, num) %>%
     summarise(author_std = paste(author_std, collapse="; "),
-              author_gender = paste(author_gender, collapse = "; "),
               orig_lang = paste(unique(orig_lang[!is.na(orig_lang)]), collapse = "; "))
 
 
 d.out <- d %>% select(-one_of('orig_lang')) %>%
     left_join(a.std) %>%
-    relocate(author_std, author_gender, .after = author) %>%
     filter(!str_detect(tail, "MISSING")) %>%
     left_join(select(g, vol, num, genre), relationship = "one-to-one") %>%
     relocate(genre, .after = subtitle) %>%
     select(-one_of(c('publisher', 'series', 'bibaddon', 'addressee'))) %>%
     left_join(select(nf, -one_of(c('author', 'title', 'subtitle'))), by=c('vol', 'num'), relationship="one-to-one") %>%
-    select(vol, num, author, author_std, author_gender, title, subtitle, genre, editorial, orig_lang, transformed, volume, city, publisher, year, series, pages, printrun, price, addressee, contents, tail, bibaddon, section, thesame, start, end)
+    select(vol, num, author, author_std, title, subtitle, genre, editorial, orig_lang, transformed, volume, city, publisher, year, series, pages, printrun, price, addressee, contents, tail, bibaddon, section, thesame, start, end)
 
 
 ## тест на несматченных авторов
