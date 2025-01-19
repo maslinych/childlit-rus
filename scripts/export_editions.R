@@ -22,11 +22,11 @@ option_list = list(
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
-d <- read_csv(opt$infile, na=c("NA", "NOPRICE", "NOPRINTRUN", "NOPAGES", "NOSERIES"))
+d <- read_csv(opt$infile, na=c("NA", "NOPRICE", "NOPRINTRUN", "NOPAGES", "NOSERIES")) 
 a <- read_csv(opt$authors)
 g <- read_csv(opt$genres)
 nf <- read_csv(opt$normalized)
-l <- read_csv(opt$langs)
+l <- read_csv(opt$langs) |> mutate(orig_lang = str_replace(orig_lang, "[,.]$", "")) |> group_by(orig_lang) |> slice_head(n = 1)
 al <- read_csv(opt$author_langs)
 
 ## тест на дубликаты в авторах
@@ -38,9 +38,14 @@ d.a <- d %>% select(vol, num, author, orig_lang) %>%
     left_join(select(a, author, author_std=match), relationship = "many-to-one") %>%
     mutate(author_std = ifelse(author == "OTHERS", "OTHERS", author_std)) %>%
     left_join(select(al, author_std, deflang=default, enforce)) |>
+    separate_rows(orig_lang, sep="; ") %>%
+    mutate(orig_lang = str_replace(orig_lang, "[,.]$", "")) %>%
     left_join(select(l, orig_lang, orig_lang_std=fullname)) |>
     rename(xlang=orig_lang) |>
     mutate(orig_lang = ifelse( (!is.na(deflang)) & orig_lang_std=='NOLANG' | (is.na(orig_lang_std) & enforce=='yes'), deflang, orig_lang_std))
+
+cat("FIXME test")
+d.a |> filter(vol == '1974-1975' & num=='2104') 
 
 d.l <- d.a |> ungroup() |> arrange(author_std) |> group_by(author_std) |>
     filter(all(unique(orig_lang) == "NOLANG") ) |>
