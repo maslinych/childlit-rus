@@ -63,7 +63,7 @@ cat("Nonmatched authors\n")
 d.a %>% filter(author!="NOAUTHOR" & is.na(author_std))
 
 a.std <- d.a %>% group_by(vol, num) %>%
-    summarise(author_std = paste(author_std, collapse="; "),
+    summarise(author_std = paste(author_std[!is.na(author_std)], collapse="; "),
               orig_lang = paste(unique(orig_lang[!is.na(orig_lang)]), collapse = "; "))
 
 
