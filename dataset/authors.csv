@@ -589,7 +589,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 АсаналиевБ,NA,NA,m,NA,NA,"Асаналиев, Б.",NA,NA,NA
 АсановН,"Асанов, Николай Александрович",Q19190115,m,1906,1974,"Асанов, Н.; Асанов, Николай",русский,NA,NA
 АсауловВФ,NA,NA,m,NA,NA,"Асаулов, В. Ф.",NA,NA,NA
-АсбьернсенПК,NA,Q355485,m,1812,1885,"Асбьернсен, П. К.",норвежский,NA,NA
 АсбьёрнсенПК,"Асбьёрнсен, Петер Кристен",Q355485,m,1812,1885,"Асбьёрнсен, П. К.; Асбьёрнсен, Петер Кристен",норвежский,NA,NA
 АсеевНН,"Асеев, Николай Николаевич",Q460329,m,1889,1963;1964,"Асеев, Н.; Асеев, Н. Н.",русский,NA,NA
 АсееваЛ,NA,NA,f,NA,NA,"Асеева, Л.",NA,NA,NA
@@ -3517,7 +3516,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 ДараселиВ,"Vanion Daraseli",Q55977834,m,1909,1954,"Дарасели, В.",грузинский,NA,NA
 ДарбниА,"Arshavir Darbni",Q16371420,m,1910,1980,"Дарбни, Аршавир",армянский,NA,NA
 ДарвинЧ,"Charles Darwin",Q1035,m,1809,1882,"Дарвин, Ч.",английский,NA,NA
-ДареллД,NA,Q310400,m,1925,1995,"Дарелл, Джеральд",английский,NA,NA
 ДаремскийИ,NA,NA,m,NA,NA,"Даремский, Илья",NA,NA,NA
 ДаренскийИ,NA,NA,m,NA,NA,"Даренский, И.; Даренский, Илья",NA,NA,NA
 ДаржааА,NA,NA,NA,NA,NA,"Даржаа, Алдын-Оол",NA,NA,NA
@@ -7088,7 +7086,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 ЛитцманВ,NA,Q2547314,m,1880,1959,"Литцман, В.",немецкий,NA,NA
 ЛиференкоВ,NA,NA,NA,NA,NA,"Лиференко, В.",NA,NA,NA
 ЛифшицАМ,NA,NA,NA,NA,NA,"Лифшиц, А. М.",NA,NA,NA
-ЛифшицВ,NA,Q4264080,m,1913,1978,"Лифшиц, Владимир",русский,NA,NA
 ЛифшицВА,"Лифшиц, Владимир Александрович",Q4264080,m,1913,1978,"Лифшиц, В.; Лифшиц, В. А.",русский,NA,NA
 ЛифшицВЯ,NA,NA,NA,NA,NA,"Лифшиц, В. Я.",NA,NA,NA
 ЛифшицМ,NA,NA,m,NA,NA,"Лифшиц, М.; Лифшиц, Мендель",NA,NA,NA
@@ -7458,7 +7455,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 МалашенкоА,NA,NA,NA,NA,NA,"Малашенко, А.",NA,NA,NA
 МалашенкоЕ,NA,NA,NA,NA,NA,"Малашенко, Е.",NA,NA,NA
 МалеваВ,NA,NA,f,NA,NA,"Малева, Вера",NA,NA,NA
-МалеваЛ,NA,Q4245551,f,1920,2013,"Малева, Леда",болгарский,NA,NA
 МалевинскийК,NA,NA,m,NA,NA,"Малевинский, К.",NA,NA,NA
 МалевинскийЮН,NA,NA,m,NA,NA,"Малевинский, Ю.; Малевинский, Ю. Н.",NA,NA,NA
 МалеиновАА,NA,NA,m,NA,NA,"Малеинов, А.; Малеинов, А. А.; Малеинов, Андрей",NA,NA,NA
@@ -7860,7 +7856,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 МеттьюзФ,NA,NA,NA,NA,NA,"Меттьюз, Ф.",английский,NA,NA
 МехакянАА,NA,NA,NA,NA,NA,"Мехакян, А. А.",NA,NA,NA
 МеховВЛ,NA,NA,m,NA,NA,"Мехов, В.; Мехов, В. Л.",NA,NA,NA
-МехтиГ,NA,Q4152759,m,1909,1965,"Мехти, Гуссейн",азербайджанский,NA,NA
 МехтиевШ,NA,NA,m,NA,NA,"Мехтиев, Ш.",NA,NA,NA
 МечетныйН,NA,NA,m,NA,NA,"Мечетный, Н.",NA,NA,NA
 МешалкинН,NA,NA,m,NA,NA,"Мешалкин, Н.",NA,NA,NA
