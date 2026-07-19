@@ -2020,7 +2020,7 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 Вельскопф-ГенрихЛ,"Вельскопф-Генрих, Лизелотта",Q96941,f,1901,1979,"Вельскопф-Генрих, Л.; Вельскопф-Генрих, Лизелотта",немецкий,NA,NA
 ВельтманВ,NA,NA,NA,NA,NA,"Вельтман, В.",NA,NA,NA
 ВелюгинА,"Велюгин, Анатолий Степанович",Q3918567,m,1923,1994,"Велюгин, А.",белорусский,NA,NA
-ВенгровН,NA,Q4107086,m,1984,1952,"Венгров, Н.; Венгров, Натан",русский,NA,NA
+ВенгровН,NA,Q4107086,m,1894,1952,"Венгров, Н.; Венгров, Натан",русский,NA,NA
 ВендрихГ,NA,NA,NA,NA,NA,"Вендрих, Г.",NA,NA,NA
 ВеневитиновДВ,"Веневитинов, Дмитрий Владимирович",Q665344,m,1805,1827,"Веневитинов, Д. В.",русский,NA,NA
 ВеневцевМ,NA,NA,m,NA,NA,"Веневцев, М.",NA,NA,NA
@@ -4556,8 +4556,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 ЗолотаревЕX,NA,NA,m,NA,NA,"Золотарев, Е. X.",NA,NA,NA
 ЗолотаревЛ,NA,NA,m,NA,NA,"Золотарев, Леонард",NA,NA,NA
 ЗолотареваН,NA,NA,f,NA,NA,"Золотарева, Н.",NA,NA,NA
-ЗолотаяГ,NA,NA,f,NA,NA,"Золотая, ГОРА",NA,NA,NA
-ЗолотаяО,NA,NA,f,NA,NA,"Золотая, ОСЕНЬ",NA,NA,NA
 ЗолотницкийНФ,NA,NA,m,NA,NA,"Золотницкий, Н. Ф.",NA,NA,NA
 ЗолотовВ,NA,NA,m,NA,NA,"Золотов, В.; Золотов, Василий",NA,NA,NA
 ЗолотовД,NA,NA,m,NA,NA,"Золотов, Д.",NA,NA,NA
@@ -6166,7 +6164,6 @@ author_std,fullname,qid,gender,birth_year,death_year,author,languages,comments,s
 КрасноперовС,NA,NA,m,NA,NA,"Красноперов, С.",NA,NA,NA
 КраснощековА,NA,NA,m,NA,NA,"Краснощеков, А.",NA,NA,NA
 КраснощековВ,NA,NA,m,NA,NA,"Краснощеков, В.",NA,NA,NA
-КрасныеС,NA,NA,NA,NA,NA,"Красные, СЕВЫ",NA,NA,NA
 КраснянскаяП,NA,NA,f,NA,NA,"Краснянская, Полина",NA,NA,NA
 КрасовА,NA,NA,m,NA,NA,"Красов, А.",NA,NA,NA
 КрасовскаяГ,NA,NA,f,NA,NA,"Красовская, Галина",NA,NA,NA
@@ -11514,7 +11511,6 @@ Rowe, Dorothy. О ней: https://www.findagrave.com/memorial/229694851/dorothy-
 СтоврацкийАИ,NA,NA,m,NA,NA,"Стоврацкий, А. И.",NA,NA,NA
 СтожаровВ,NA,NA,m,NA,NA,"Стожаров, Владимир",NA,NA,NA
 СтойкоП,NA,NA,NA,NA,NA,"Стойко, П.",NA,NA,NA
-СтоликН,NA,NA,NA,NA,NA,"Столик, НАКРОЙСЯ",NA,NA,NA
 СтолповскийБП,NA,NA,m,NA,NA,"Столповский, Б. П.",NA,NA,NA
 СтолповскийПМ,NA,NA,m,NA,NA,"Столповский, П. М.",NA,NA,NA
 СтоляровВ,NA,NA,m,NA,NA,"Столяров, Валентин",NA,NA,NA
